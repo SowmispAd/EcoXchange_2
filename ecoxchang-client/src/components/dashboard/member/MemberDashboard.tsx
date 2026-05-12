@@ -1,0 +1,233 @@
+"use client";
+
+import { StatCard } from '@/components/dashboard/StatCard';
+import { ActivityChart } from '@/components/dashboard/ActivityChart';
+import { ProgressWidget } from '@/components/dashboard/ProgressWidget';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Progress } from '@/components/ui/progress';
+import { Award, Leaf, Recycle, Calendar, Camera, ShoppingBag, Droplet, TreePine, Gift, Clock } from 'lucide-react';
+import { MemberStats } from './MemberStats';
+import { useAuthStore } from '@/store/useAuthStore';
+
+const activityData = [
+  { name: 'Mon', recycled: 12 },
+  { name: 'Tue', recycled: 19 },
+  { name: 'Wed', recycled: 15 },
+  { name: 'Thu', recycled: 22 },
+  { name: 'Fri', recycled: 28 },
+  { name: 'Sat', recycled: 35 },
+  { name: 'Sun', recycled: 42 },
+];
+
+const recentPickups = [
+  { id: 'PK-1001', date: 'Oct 24, 2023', type: 'Plastic & Paper', status: 'completed', points: '+150' },
+  { id: 'PK-1002', date: 'Oct 28, 2023', type: 'Electronics', status: 'completed', points: '+300' },
+  { id: 'PK-1003', date: 'Nov 02, 2023', type: 'Glass & Metal', status: 'scheduled', points: 'Pending' },
+  { id: 'PK-1004', date: 'Nov 10, 2023', type: 'Mixed Recyclables', status: 'requested', points: 'Pending' },
+];
+
+const marketplaceItems = [
+  { id: 1, name: 'Reusable Coffee Cup', points: 500, image: '☕' },
+  { id: 2, name: 'Organic Tote Bag', points: 300, image: '🛍️' },
+  { id: 3, name: '$10 Grocery Voucher', points: 1000, image: '🎫' },
+];
+
+export function MemberDashboard() {
+  const name = useAuthStore((s) => s.user?.name ?? 'Member');
+  return (
+    <div className="flex flex-col gap-6">
+      <p className="text-2xl font-semibold tracking-tight">
+        Hi, {name} <span aria-hidden>👋</span>
+      </p>
+      <MemberStats />
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatCard
+          title="Total Recycled"
+          value="142 kg"
+          icon={Recycle}
+          description="Top 15% in your area"
+          trend={{ value: 12, isPositive: true }}
+        />
+        <StatCard
+          title="Next Pickup"
+          value="Nov 02"
+          icon={Calendar}
+          description="10:00 AM - 12:00 PM"
+        />
+        {/* Added more stats for functionalization */}
+        <StatCard
+          title="EcoPoints Earned"
+          value="2,450"
+          icon={Award}
+          description="Last 30 days"
+          trend={{ value: 8, isPositive: true }}
+        />
+        <StatCard
+          title="Active Requests"
+          value="2"
+          icon={Calendar}
+          description="Pending pickup"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <ActivityChart 
+            title="Personal Eco Impact" 
+            description="Your recycling volume (kg) over the last 7 days"
+            data={activityData}
+            dataKey="recycled"
+          />
+        </div>
+        <div className="flex flex-col gap-6">
+          <Card className="border-primary/20 bg-primary/5">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Camera className="h-5 w-5 text-primary" />
+                AI Waste Scanner
+              </CardTitle>
+              <CardDescription>Not sure how to recycle something?</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col items-center text-center justify-center py-4">
+              <div className="h-16 w-16 bg-primary/10 rounded-full flex items-center justify-center mb-4 border-2 border-primary/20 border-dashed">
+                <Leaf className="h-6 w-6 text-primary" />
+              </div>
+              <p className="text-xs font-medium mb-4">Scan items to get instant sorting instructions.</p>
+              <Button size="sm" className="w-full">Launch Scanner</Button>
+            </CardContent>
+          </Card>
+
+          <Card className="border-blue-500/20 bg-blue-500/5">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Recycle className="h-5 w-5 text-blue-500" />
+                Smart Bin Status
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex justify-between items-end">
+                <div className="space-y-1">
+                  <p className="text-3xl font-black text-blue-600">68%</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Fill Level</p>
+                </div>
+                <div className="text-right">
+                  <Badge className="bg-emerald-500/10 text-emerald-600 border-none">Connected</Badge>
+                  <p className="text-[10px] mt-1 font-medium text-muted-foreground">Last sync: 2m ago</p>
+                </div>
+              </div>
+              <Progress value={68} className="h-2 bg-blue-100" />
+              <div className="pt-2 flex items-center gap-2 text-xs font-medium text-blue-700">
+                <Clock className="h-3.5 w-3.5" />
+                Next pickup estimated in 2 days
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <ProgressWidget 
+          title="Carbon Saved" 
+          description="Equivalent to planting trees" 
+          value={45} 
+          max={100} 
+          icon={TreePine} 
+          color="bg-emerald-500" 
+        />
+        <ProgressWidget 
+          title="Water Conserved" 
+          description="From recycled plastics" 
+          value={120} 
+          max={500} 
+          icon={Droplet} 
+          color="bg-blue-500" 
+        />
+        <ProgressWidget 
+          title="Tier Progress" 
+          description="Points to Platinum" 
+          value={2450} 
+          max={3000} 
+          icon={Award} 
+          color="bg-amber-500" 
+        />
+      </div>
+
+      <Card>
+        <CardHeader className="pb-0">
+          <Tabs defaultValue="pickups" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 md:w-[400px]">
+              <TabsTrigger value="pickups">My Pickups</TabsTrigger>
+              <TabsTrigger value="rewards">Reward Marketplace</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="pickups" className="pt-6 pb-2">
+              <div className="flex justify-between items-center mb-4">
+                <div>
+                  <CardTitle className="text-lg">Recent Pickups</CardTitle>
+                  <CardDescription>Your latest recycling collection requests</CardDescription>
+                </div>
+                <Button size="sm"><Calendar className="h-4 w-4 mr-2"/> Schedule New</Button>
+              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Points Earned</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {recentPickups.map((pickup) => (
+                    <TableRow key={pickup.id}>
+                      <TableCell className="font-medium">{pickup.date}</TableCell>
+                      <TableCell>{pickup.type}</TableCell>
+                      <TableCell>
+                        <Badge 
+                          variant={
+                            pickup.status === 'completed' ? 'default' : 
+                            pickup.status === 'scheduled' ? 'secondary' : 'outline'
+                          }
+                          className={pickup.status === 'completed' ? 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20' : ''}
+                        >
+                          {pickup.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right font-medium text-emerald-600 dark:text-emerald-400">
+                        {pickup.points}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TabsContent>
+            
+            <TabsContent value="rewards" className="pt-6 pb-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {marketplaceItems.map(item => (
+                  <Card key={item.id} className="border border-muted hover:border-primary/50 transition-colors">
+                    <CardHeader className="text-center pb-2">
+                      <div className="text-6xl mb-2">{item.image}</div>
+                      <CardTitle className="text-base">{item.name}</CardTitle>
+                    </CardHeader>
+                    <CardFooter className="flex justify-between items-center border-t pt-4">
+                      <div className="flex items-center gap-1 font-bold text-primary">
+                        <Gift className="h-4 w-4" /> {item.points}
+                      </div>
+                      <Button variant="outline" size="sm">Redeem</Button>
+                    </CardFooter>
+                  </Card>
+                ))}
+              </div>
+            </TabsContent>
+          </Tabs>
+        </CardHeader>
+      </Card>
+    </div>
+  );
+}
