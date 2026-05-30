@@ -10,7 +10,8 @@ import { useAuthStore, defaultHomeForRole } from "@/store/useAuthStore";
 import { useRouter, usePathname } from "next/navigation";
 import { NotificationBell } from "@/components/eco/NotificationBell";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
-import { DASHBOARD_ROLE_SEGMENTS, getDashboardTitle, type AppRole } from "@/config/role-nav";
+import { getDashboardTitle, type AppRole } from "@/config/role-nav";
+import { pathToAppRole } from "@/lib/path-role";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -25,18 +26,14 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
 
   useEffect(() => {
     if (!isAuthenticated) {
-      router.push("/auth/login");
+      router.push("/login");
       return;
     }
 
     const role = user?.role as AppRole | undefined;
-    const first = pathname.split("/")[1] as AppRole | string;
+    const pathRole = pathToAppRole(pathname);
 
-    if (
-      role &&
-      DASHBOARD_ROLE_SEGMENTS.includes(first as AppRole) &&
-      first !== role
-    ) {
+    if (role && pathRole && pathRole !== role) {
       router.replace(defaultHomeForRole(role));
     }
   }, [isAuthenticated, user, pathname, router]);

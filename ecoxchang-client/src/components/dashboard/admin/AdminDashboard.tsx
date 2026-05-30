@@ -30,13 +30,8 @@ const collectionForecast = [
   { name: 'Week 6', actual: 0, forecast: 5300 },
 ];
 
-const usersData = [
-  { id: 'USR-001', name: 'Alice Johnson', role: 'Member', status: 'Active', joinDate: 'Oct 10, 2023' },
-  { id: 'AGT-002', name: 'Bob Smith', role: 'Agent', status: 'Active', joinDate: 'Oct 12, 2023' },
-  { id: 'REC-003', name: 'GreenCorp Ltd.', role: 'Recycler', status: 'Verified', joinDate: 'Oct 15, 2023' },
-  { id: 'SUP-004', name: 'Diana Prince', role: 'Supervisor', status: 'Active', joinDate: 'Nov 01, 2023' },
-  { id: 'USR-005', name: 'Evan Wright', role: 'Member', status: 'Suspended', joinDate: 'Nov 05, 2023' },
-];
+import { useQuery } from '@tanstack/react-query';
+import { api } from '@/lib/api';
 
 const systemEvents = [
   { id: 'evt1', title: 'New Recycler Partner Onboarded', description: 'GreenCorp Ltd. completed verification.', time: '10 mins ago', status: 'completed' as const },
@@ -46,6 +41,16 @@ const systemEvents = [
 ];
 
 export function AdminDashboard() {
+  const { data: usersDataRaw } = useQuery({
+    queryKey: ['admin-users'],
+    queryFn: async () => {
+      const res = await api.get('/admin/users');
+      return res.data.data || [];
+    },
+  });
+  
+  const usersData = usersDataRaw || [];
+
   return (
     <div className="flex flex-col gap-6">
       {/* Top AI Insight Banner */}
@@ -212,9 +217,9 @@ export function AdminDashboard() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {usersData.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell className="font-medium text-xs text-muted-foreground">{user.id}</TableCell>
+                  {usersData.map((user: any) => (
+                    <TableRow key={user._id}>
+                      <TableCell className="font-medium text-xs text-muted-foreground">{user._id.substring(0, 8)}</TableCell>
                       <TableCell className="font-medium">{user.name}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className="capitalize bg-muted/50">
@@ -224,20 +229,18 @@ export function AdminDashboard() {
                       <TableCell>
                         <Badge 
                           variant={
-                            user.status === 'Active' ? 'default' : 
-                            user.status === 'Verified' ? 'default' : 'secondary'
+                            !user.isSuspended ? 'default' : 'secondary'
                           }
                           className={
-                            (user.status === 'Active' || user.status === 'Verified') 
+                            !user.isSuspended
                               ? 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20' 
                               : 'bg-destructive/10 text-destructive hover:bg-destructive/20'
                           }
                         >
-                          {user.status === 'Verified' && <ShieldCheck className="mr-1 h-3 w-3" />}
-                          {user.status}
+                          {user.isSuspended ? 'Suspended' : 'Active'}
                         </Badge>
                       </TableCell>
-                      <TableCell>{user.joinDate}</TableCell>
+                      <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
                       <TableCell>
                         <Button variant="ghost" size="icon">
                           <MoreHorizontal className="h-4 w-4" />

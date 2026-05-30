@@ -7,11 +7,20 @@ import { ApprovalTable } from "@/components/eco/ApprovalTable";
 import { mockProducts, mockPendingApprovals } from "@/lib/mock/data";
 import toast from "react-hot-toast";
 
-const myListings = [
-  { id: "m1", name: "Glass coasters", category: "Home", price: 399, image: "🥃", seller: "You", score: 90 },
-];
+import { useQuery } from '@tanstack/react-query';
+import { api } from '@/lib/api';
 
 export default function MemberMarketplacePage() {
+  const { data: productsDataRaw } = useQuery({
+    queryKey: ['marketplace-products'],
+    queryFn: async () => {
+      const res = await api.get('/marketplace/products');
+      return res.data.data;
+    },
+  });
+
+  const products = productsDataRaw || [];
+
   return (
     <Tabs defaultValue="all" className="space-y-6">
       <TabsList className="flex flex-wrap h-auto gap-1">
@@ -21,18 +30,23 @@ export default function MemberMarketplacePage() {
         <TabsTrigger value="pending">Pending approvals</TabsTrigger>
       </TabsList>
       <TabsContent value="all" className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {mockProducts.map((p) => (
+        {products.map((p: any) => (
           <ProductCard
-            key={p.id}
-            {...p}
-            onBuy={() => toast.success(`Purchased ${p.name} (demo)`)}
+            key={p._id}
+            name={p.name}
+            category={p.category || 'General'}
+            price={p.price}
+            image={p.images?.[0] ? <img src={p.images[0]} alt={p.name} className="w-full h-32 object-cover rounded-lg" /> : '📦'}
+            seller={p.recycler?.name || 'Recycler'}
+            score={p.sustainabilityScore || 80}
+            onBuy={() => toast.success(`Purchased ${p.name}`)}
           />
         ))}
       </TabsContent>
       <TabsContent value="mine" className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {myListings.map((p) => (
-          <ProductCard key={p.id} {...p} onBuy={() => toast.success("Request sent")} />
-        ))}
+        <div className="col-span-full p-8 text-center text-muted-foreground border-2 border-dashed rounded-xl">
+          You don't have any listings yet.
+        </div>
       </TabsContent>
       <TabsContent value="sell">
         <ProductForm />

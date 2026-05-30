@@ -1,16 +1,22 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  async redirects() {
+  async rewrites() {
     return [
-      { source: "/agent", destination: "/delivery/dashboard", permanent: false },
-      { source: "/agent/:path*", destination: "/delivery/:path*", permanent: false },
-      { source: "/trial", destination: "/trial/dashboard", permanent: false },
-      { source: "/member", destination: "/member/dashboard", permanent: false },
-      { source: "/supervisor", destination: "/supervisor/dashboard", permanent: false },
-      { source: "/delivery", destination: "/delivery/dashboard", permanent: false },
-      { source: "/recycler", destination: "/recycler/dashboard", permanent: false },
-      { source: "/admin", destination: "/admin/dashboard", permanent: false },
+      { source: "/dashboard/:role/:path*", destination: "/:role/:path*" },
+      { source: "/dashboard/:role", destination: "/:role/dashboard" },
+    ];
+  },
+  async redirects() {
+    const roles = ["trial", "member", "supervisor", "delivery", "recycler", "admin"] as const;
+    const legacyToCanonical = roles.flatMap((role) => [
+      { source: `/${role}`, destination: `/dashboard/${role}/dashboard`, permanent: false },
+      { source: `/${role}/:path*`, destination: `/dashboard/${role}/:path*`, permanent: false },
+    ]);
+    return [
+      { source: "/agent", destination: "/dashboard/delivery/dashboard", permanent: false },
+      { source: "/agent/:path*", destination: "/dashboard/delivery/:path*", permanent: false },
+      ...legacyToCanonical,
     ];
   },
 };

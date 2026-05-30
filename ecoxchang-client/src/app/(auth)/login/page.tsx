@@ -1,36 +1,67 @@
 "use client";
 
-import { useState } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { Leaf, Eye, EyeOff } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useAuthStore, defaultHomeForRole, type AppRole } from '@/store/useAuthStore';
-import { motion } from 'framer-motion';
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Leaf, Eye, EyeOff, Phone, Mail, Lock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAuthStore, defaultHomeForRole } from "@/store/useAuthStore";
+import { motion } from "framer-motion";
+import toast from "react-hot-toast";
+import { api } from "@/lib/api";
+import { mapApiUserToStore } from "@/lib/map-api-user";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login } = useAuthStore();
+  const { setSession, setPendingPhone } = useAuthStore();
+  const [loginMode, setLoginMode] = useState<"password" | "otp">("password");
+  
+  // Email/Password states
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [role, setRole] = useState<AppRole>('member');
 
-  const handleLogin = (e: React.FormEvent) => {
+  // Phone/OTP states
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    login({
-      id: '1',
-      name: `Demo ${role}`,
-      phone: '+919876543210',
-      email: `demo@${role}.ecoxchange.com`,
-      role,
-      ecoPoints: 500,
-      streak: 2,
-      membershipStatus: role === 'trial' ? 'trial' : role === 'member' ? 'member' : 'staff',
-    });
-    router.push(defaultHomeForRole(role));
+    setLoading(true);
+    try {
+      const res = await api.post("/auth/login", { email, password });
+      if (res.data?.success) {
+        const { token, data: user, modelName } = res.data;
+        const mappedUser = mapApiUserToStore(user, modelName);
+        setSession({ token, user: mappedUser, backendModel: modelName });
+        toast.success("Login successful!");
+        router.push(defaultHomeForRole(mappedUser.role));
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Invalid email or password");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSendOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const res = await api.post("/auth/send-otp", { phoneNumber });
+      if (res.data?.success) {
+        setPendingPhone(phoneNumber);
+        toast.success("OTP sent to your phone!");
+        router.push("/verify-otp");
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to send OTP");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -43,7 +74,7 @@ export default function LoginPage() {
         transition={{ duration: 0.3 }}
         className="w-full max-w-md z-10"
       >
-        <div className="flex justify-center mb-8">
+        <div className="flex justify-center mb-6">
           <Link href="/" className="flex items-center space-x-2">
             <div className="bg-primary/10 p-2 rounded-xl">
               <Leaf className="h-8 w-8 text-primary" />
@@ -54,69 +85,98 @@ export default function LoginPage() {
 
         <Card className="border-none shadow-xl bg-background/80 backdrop-blur-md">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl text-center">Welcome back</CardTitle>
+            <CardTitle className="text-2xl text-center">Welcome Back</CardTitle>
             <CardDescription className="text-center">
-              Enter your credentials to access your account
+              Choose your preferred sign-in method
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="role">Login As</Label>
-                <Select value={role} onValueChange={(val) => val && setRole(val as AppRole)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="trial">Trial Member</SelectItem>
-                    <SelectItem value="member">Member</SelectItem>
-                    <SelectItem value="admin">Administrator</SelectItem>
-                    <SelectItem value="supervisor">Supervisor</SelectItem>
-                    <SelectItem value="delivery">Delivery Agent</SelectItem>
-                    <SelectItem value="recycler">Recycler Partner</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" placeholder="m@example.com" required />
-              </div>
-              
-              <div className="space-y-2 relative">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Password</Label>
-                  <Link href="#" className="text-sm font-medium text-primary hover:underline">
-                    Forgot password?
-                  </Link>
-                </div>
-                <div className="relative">
-                  <Input 
-                    id="password" 
-                    type={showPassword ? "text" : "password"} 
-                    placeholder="••••••••" 
-                    required 
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-0 top-0 h-full px-3 py-2 text-muted-foreground hover:text-foreground"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </Button>
-                </div>
-              </div>
-              
-              <Button type="submit" className="w-full mt-6" size="lg">
-                Sign In
+          <CardContent className="space-y-4">
+            <div className="flex gap-2 p-1 bg-muted rounded-lg">
+              <Button
+                variant={loginMode === "password" ? "default" : "ghost"}
+                className="flex-1 rounded-md"
+                onClick={() => setLoginMode("password")}
+              >
+                <Mail className="w-4 h-4 mr-2" /> Email/Password
               </Button>
-            </form>
+              <Button
+                variant={loginMode === "otp" ? "default" : "ghost"}
+                className="flex-1 rounded-md"
+                onClick={() => setLoginMode("otp")}
+              >
+                <Phone className="w-4 h-4 mr-2" /> Phone/OTP
+              </Button>
+            </div>
+
+            {loginMode === "password" ? (
+              <form onSubmit={handlePasswordLogin} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="m@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+                </div>
+                
+                <div className="space-y-2 relative">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="password">Password</Label>
+                    <Link href="/forgot-password" className="text-sm font-medium text-primary hover:underline">
+                      Forgot password?
+                    </Link>
+                  </div>
+                  <div className="relative">
+                    <Input 
+                      id="password" 
+                      type={showPassword ? "text" : "password"} 
+                      placeholder="••••••••" 
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required 
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-0 top-0 h-full px-3 py-2 text-muted-foreground hover:text-foreground"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </div>
+                
+                <Button type="submit" disabled={loading} className="w-full mt-2" size="lg">
+                  {loading ? "Signing In..." : "Sign In"}
+                </Button>
+              </form>
+            ) : (
+              <form onSubmit={handleSendOtp} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Phone Number</Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    placeholder="+919000000001"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    required
+                  />
+                </div>
+                
+                <Button type="submit" disabled={loading} className="w-full mt-2" size="lg">
+                  {loading ? "Sending OTP..." : "Request OTP"}
+                </Button>
+              </form>
+            )}
           </CardContent>
           <CardFooter className="flex justify-center border-t p-6">
             <div className="text-sm text-muted-foreground">
-              Don't have an account?{' '}
+              Don't have an account?{" "}
               <Link href="/register" className="font-semibold text-primary hover:underline">
                 Sign up
               </Link>

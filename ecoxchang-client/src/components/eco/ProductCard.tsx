@@ -18,7 +18,7 @@ export function ProductCard({
   name: string;
   category: string;
   price: number;
-  image: string;
+  image: string | React.ReactNode;
   seller: string;
   score: number;
   onBuy?: () => void;

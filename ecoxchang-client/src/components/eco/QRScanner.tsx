@@ -1,28 +1,54 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "react-hot-toast";
 
+const REGION_ID = "ecoxchange-qr-reader";
+
 export function QRScanner({ onScan }: { onScan?: (text: string) => void }) {
-  const region = useRef<HTMLDivElement>(null);
+  const regionRef = useRef<HTMLDivElement>(null);
+  const scannerRef = useRef<Html5Qrcode | null>(null);
+  const runningRef = useRef(false);
   const [running, setRunning] = useState(false);
-  const scanner = useRef<Html5Qrcode | null>(null);
+
+  const safeStop = useCallback(async () => {
+    const s = scannerRef.current;
+    if (!s || !runningRef.current) {
+      scannerRef.current = null;
+      runningRef.current = false;
+      setRunning(false);
+      return;
+    }
+    try {
+      await s.stop();
+    } catch {
+      /* html5-qrcode throws if not running */
+    }
+    try {
+      await s.clear();
+    } catch {
+      /* ignore */
+    }
+    scannerRef.current = null;
+    runningRef.current = false;
+    setRunning(false);
+  }, []);
 
   useEffect(() => {
     return () => {
-      void scanner.current?.stop().catch(() => undefined);
+      void safeStop();
     };
-  }, []);
+  }, [safeStop]);
 
   const start = async () => {
-    if (!region.current) return;
-    const id = "qr-reader-region";
-    region.current.id = id;
-    const s = new Html5Qrcode(id);
-    scanner.current = s;
+    await safeStop();
+    if (!regionRef.current) return;
+    regionRef.current.id = REGION_ID;
+    const s = new Html5Qrcode(REGION_ID);
+    scannerRef.current = s;
     try {
       await s.start(
         { facingMode: "environment" },
@@ -33,23 +59,18 @@ export function QRScanner({ onScan }: { onScan?: (text: string) => void }) {
         },
         () => undefined,
       );
+      runningRef.current = true;
       setRunning(true);
     } catch {
+      scannerRef.current = null;
+      runningRef.current = false;
+      setRunning(false);
       toast.error("Camera access failed. Allow permission or use HTTPS.");
     }
   };
 
-  const stop = async () => {
-    if (scanner.current && running) {
-      await scanner.current.stop().catch(() => undefined);
-      try {
-        scanner.current.clear();
-      } catch {
-        /* ignore */
-      }
-    }
-    scanner.current = null;
-    setRunning(false);
+  const stop = () => {
+    void safeStop();
   };
 
   return (
@@ -59,14 +80,14 @@ export function QRScanner({ onScan }: { onScan?: (text: string) => void }) {
         <CardDescription>Scan pickup QR codes or bag stickers.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div ref={region} className="rounded-lg overflow-hidden bg-muted min-h-[200px]" />
+        <div ref={regionRef} className="rounded-lg overflow-hidden bg-muted min-h-[200px]" />
         <div className="flex gap-2">
           {!running ? (
-            <Button type="button" onClick={() => void start()}>
+            <Button type="button" onClick={start}>
               Start camera
             </Button>
           ) : (
-            <Button type="button" variant="secondary" onClick={() => void stop()}>
+            <Button type="button" variant="secondary" onClick={stop}>
               Stop
             </Button>
           )}

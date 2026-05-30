@@ -17,6 +17,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Package, Truck, CheckCircle, MapPin, DollarSign, Clock, Phone } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { dashboardPath } from "@/config/role-nav";
 
 const efficiencyData = [
   { name: "Mon", completed: 12, failed: 1 },
@@ -85,13 +86,13 @@ export function DeliveryDashboard() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap gap-2">
         <Link
-          href="/delivery/scanner"
+          href={dashboardPath("delivery", "scanner")}
           className={cn(buttonVariants({ variant: "outline", size: "sm" }), "no-underline")}
         >
           Open QR scanner
         </Link>
         <Link
-          href="/delivery/map"
+          href={dashboardPath("delivery", "map")}
           className={cn(buttonVariants({ variant: "outline", size: "sm" }), "no-underline")}
         >
           Route map

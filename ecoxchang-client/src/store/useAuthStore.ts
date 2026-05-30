@@ -20,10 +20,13 @@ export interface User {
 
 interface AuthState {
   user: User | null;
+  token: string | null;
+  backendModel: string | null;
   isAuthenticated: boolean;
   pendingPhone: string | null;
   isNewUser: boolean;
   login: (userData: User) => void;
+  setSession: (args: { token: string; user: User; backendModel?: string | null }) => void;
   logout: () => void;
   setPendingPhone: (phone: string | null) => void;
   setIsNewUser: (v: boolean) => void;
@@ -34,14 +37,32 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
       user: null,
+      token: null,
+      backendModel: null,
       isAuthenticated: false,
       pendingPhone: null,
       isNewUser: false,
       login: (userData) =>
-        set({ user: userData, isAuthenticated: true, pendingPhone: null }),
+        set({
+          user: userData,
+          isAuthenticated: true,
+          pendingPhone: null,
+          token: null,
+          backendModel: null,
+        }),
+      setSession: ({ token, user, backendModel }) =>
+        set({
+          user,
+          token,
+          backendModel: backendModel ?? null,
+          isAuthenticated: true,
+          pendingPhone: null,
+        }),
       logout: () =>
         set({
           user: null,
+          token: null,
+          backendModel: null,
           isAuthenticated: false,
           pendingPhone: null,
           isNewUser: false,
@@ -49,11 +70,17 @@ export const useAuthStore = create<AuthState>()(
       setPendingPhone: (phone) => set({ pendingPhone: phone }),
       setIsNewUser: (v) => set({ isNewUser: v }),
       updateUser: (patch) =>
-        set((s) =>
-          s.user ? { user: { ...s.user, ...patch } } : {},
-        ),
+        set((s) => (s.user ? { user: { ...s.user, ...patch } } : {})),
     }),
-    { name: "ecoxchange-auth" },
+    {
+      name: "ecoxchange-auth-v2",
+      partialize: (s) => ({
+        user: s.user,
+        token: s.token,
+        backendModel: s.backendModel,
+        isAuthenticated: s.isAuthenticated,
+      }),
+    },
   ),
 );
 

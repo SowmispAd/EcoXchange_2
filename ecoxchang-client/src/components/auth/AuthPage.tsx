@@ -15,8 +15,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useAuthStore, defaultHomeForRole, type AppRole } from "@/store/useAuthStore";
+import { useAuthStore, type AppRole, defaultHomeForRole } from "@/store/useAuthStore";
 import { motion } from "framer-motion";
+import toast from "react-hot-toast";
+import { api } from "@/lib/api";
+import { mapApiUserToStore } from "@/lib/map-api-user";
+import { toAppRole } from "@/lib/role-map";
 
 interface AuthPageProps {
   role: AppRole;
@@ -41,24 +45,49 @@ const roleBranding: Record<
 
 export default function AuthPage({ role, type }: AuthPageProps) {
   const router = useRouter();
-  const { login } = useAuthStore();
+  const { setSession } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
-  const [phone, setPhone] = useState("+919876543210");
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
   const brand = roleBranding[role];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    login({
-      id: "1",
-      name: `Demo ${brand.title}`,
-      phone: phone.replace(/\s/g, "") || "+919876543210",
-      email: `demo@${role}.ecoxchange.com`,
-      role,
-      ecoPoints: role === "trial" ? 320 : role === "member" ? 2450 : 500,
-      streak: role === "trial" ? 2 : 4,
-      membershipStatus: role === "trial" ? "trial" : role === "member" ? "member" : "staff",
-    });
-    router.push(defaultHomeForRole(role));
+    setLoading(true);
+
+    try {
+      if (type === "register") {
+        const res = await api.post("/auth/register", {
+          name,
+          email,
+          password,
+          role,
+        });
+        if (res.data?.success) {
+          const { token, data: user, modelName } = res.data;
+          setSession({ token, user: mapApiUserToStore(user, modelName), backendModel: modelName });
+          toast.success("Account created successfully");
+          router.push(defaultHomeForRole(toAppRole(String(user.role || role))));
+        }
+      } else {
+        const res = await api.post("/auth/login", {
+          email,
+          password,
+        });
+        if (res.data?.success) {
+          const { token, data: user, modelName } = res.data;
+          setSession({ token, user: mapApiUserToStore(user, modelName), backendModel: modelName });
+          toast.success("Logged in successfully");
+          router.push(defaultHomeForRole(toAppRole(String(user.role || role))));
+        }
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Authentication failed");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -90,7 +119,7 @@ export default function AuthPage({ role, type }: AuthPageProps) {
             <CardTitle className="text-3xl font-bold tracking-tight">{brand.title}</CardTitle>
             <CardDescription className="text-base">
               {type === "login"
-                ? "Phone-first demo login for this workspace role"
+                ? "Sign in to your account"
                 : "Join EcoXchange today and make a difference"}
             </CardDescription>
           </CardHeader>
@@ -99,35 +128,48 @@ export default function AuthPage({ role, type }: AuthPageProps) {
               {type === "register" && (
                 <div className="space-y-2">
                   <Label htmlFor="name">Full Name</Label>
-                  <Input id="name" placeholder="John Doe" required className="h-12" />
+                  <Input
+                    id="name"
+                    placeholder="John Doe"
+                    required
+                    className="h-12"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                  />
                 </div>
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="phone">Phone number</Label>
+                <Label htmlFor="email">Email</Label>
                 <Input
-                  id="phone"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  id="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="h-12"
-                  inputMode="tel"
                   required
                 />
               </div>
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="password">OTP / Password (demo)</Label>
-                  <Link href="/auth/forgot-account" className="text-sm font-medium text-primary hover:underline">
-                    Forgot?
-                  </Link>
+                  <Label htmlFor="password">Password</Label>
+                  {type === "login" && (
+                    <Link href="/auth/forgot-account" className="text-sm font-medium text-primary hover:underline">
+                      Forgot?
+                    </Link>
+                  )}
                 </div>
                 <div className="relative">
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="Any value in demo"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                     className="h-12 pr-12"
+                    required
                   />
                   <Button
                     type="button"
@@ -143,17 +185,18 @@ export default function AuthPage({ role, type }: AuthPageProps) {
 
               <Button
                 type="submit"
+                disabled={loading}
                 className={`w-full mt-4 h-12 text-lg font-bold shadow-lg bg-gradient-to-r ${brand.theme} border-none hover:opacity-90 transition-opacity`}
               >
-                {type === "login" ? "Sign In" : "Create Account"}
+                {loading ? "Processing..." : type === "login" ? "Sign In" : "Create Account"}
               </Button>
             </form>
           </CardContent>
           <CardFooter className="flex flex-col gap-4 border-t p-8 bg-muted/10">
             <div className="text-sm text-center text-muted-foreground">
-              Prefer OTP?{" "}
-              <Link href={`/auth/login?role=${role}`} className="font-bold text-primary hover:underline">
-                Unified login
+              Prefer Phone/OTP?{" "}
+              <Link href={`/auth/verify-otp?role=${role}`} className="font-bold text-primary hover:underline">
+                Use Phone Login
               </Link>
             </div>
             <div className="text-sm text-center text-muted-foreground">

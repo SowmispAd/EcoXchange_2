@@ -16,7 +16,6 @@ import {
   ShieldCheck,
   Flag,
   BarChart3,
-  Recycle,
   IndianRupee,
   CreditCard,
   FileText,
@@ -34,7 +33,12 @@ export type AppRole =
 
 export type NavItem = { name: string; href: string; icon: LucideIcon };
 
-const p = (role: AppRole, path: string) => `/${role}/${path}`;
+/** Canonical dashboard URL segment (browser-visible path). Rewrites map `/dashboard/...` → app routes under `/:role/...`. */
+export function dashboardPath(role: AppRole, segment: string): string {
+  return `/dashboard/${role}/${segment}`;
+}
+
+const p = dashboardPath;
 
 export const NAV_BY_ROLE: Record<AppRole, NavItem[]> = {
   trial: [
@@ -42,8 +46,6 @@ export const NAV_BY_ROLE: Record<AppRole, NavItem[]> = {
     { name: "Schedule", href: p("trial", "schedule"), icon: Calendar },
     { name: "Marketplace", href: p("trial", "marketplace"), icon: Store },
     { name: "Profile", href: p("trial", "profile"), icon: User },
-    { name: "Referrals", href: p("trial", "referrals"), icon: Users },
-    { name: "Rewards", href: p("trial", "rewards"), icon: Gift },
   ],
   member: [
     { name: "Dashboard", href: p("member", "dashboard"), icon: LayoutDashboard },
@@ -94,21 +96,21 @@ export const NAV_BY_ROLE: Record<AppRole, NavItem[]> = {
 };
 
 export const ROLE_HOME: Record<AppRole, string> = {
-  trial: "/trial/dashboard",
-  member: "/member/dashboard",
-  supervisor: "/supervisor/dashboard",
-  delivery: "/delivery/dashboard",
-  recycler: "/recycler/dashboard",
-  admin: "/admin/dashboard",
+  trial: "/dashboard/trial/dashboard",
+  member: "/dashboard/member/dashboard",
+  supervisor: "/dashboard/supervisor/dashboard",
+  delivery: "/dashboard/delivery/dashboard",
+  recycler: "/dashboard/recycler/dashboard",
+  admin: "/dashboard/admin/dashboard",
 };
 
 const TITLE_OVERRIDES: Record<string, string> = {
-  "/trial/marketplace": "Marketplace",
-  "/member/marketplace": "Marketplace",
-  "/supervisor/marketplace-approvals": "Marketplace approvals",
-  "/admin/system-settings": "System settings",
-  "/admin/audit-logs": "Audit logs",
-  "/delivery/scanner": "QR scanner",
+  "/dashboard/trial/marketplace": "Marketplace",
+  "/dashboard/member/marketplace": "Marketplace",
+  "/dashboard/supervisor/marketplace-approvals": "Marketplace approvals",
+  "/dashboard/admin/system-settings": "System settings",
+  "/dashboard/admin/audit-logs": "Audit logs",
+  "/dashboard/delivery/scanner": "QR scanner",
 };
 
 export function getDashboardTitle(pathname: string): string {

@@ -24,6 +24,8 @@ import {
   Check
 } from 'lucide-react';
 import { PaymentModal } from './PaymentModal';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '@/lib/api';
 
 interface SubscriptionModalProps {
   open: boolean;
@@ -33,6 +35,16 @@ interface SubscriptionModalProps {
 export function SubscriptionModal({ open, onOpenChange }: SubscriptionModalProps) {
   const [selectedBin, setSelectedBin] = useState<'small' | 'medium' | 'large'>('medium');
   const [showPayment, setShowPayment] = useState(false);
+
+  const { data: plansData } = useQuery({
+    queryKey: ['membership-plans'],
+    queryFn: async () => {
+      const res = await api.get('/membership/plans');
+      return res.data.data;
+    },
+  });
+
+  const plan = plansData?.[0];
 
   const binOptions = [
     { id: 'small', name: 'Small Bin', capacity: '15L', icon: Trash2, color: 'emerald' },
@@ -137,7 +149,7 @@ export function SubscriptionModal({ open, onOpenChange }: SubscriptionModalProps
             <div className="flex items-center justify-between w-full">
               <div className="text-left">
                 <p className="text-sm text-muted-foreground">Annual Membership</p>
-                <p className="text-2xl font-black">₹300.00</p>
+                <p className="text-2xl font-black">₹{plan?.price ?? '300.00'}</p>
               </div>
               <Button size="lg" className="rounded-full px-8 font-bold" onClick={handleProceed}>
                 Checkout <ArrowRight className="ml-2 h-4 w-4" />
@@ -154,7 +166,8 @@ export function SubscriptionModal({ open, onOpenChange }: SubscriptionModalProps
           setShowPayment(false);
           onOpenChange(false);
         }}
-        amount="300"
+        amount={plan?.price?.toString() ?? "300"}
+        planId={plan?._id}
       />
     </>
   );

@@ -23,41 +23,90 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useRouter } from 'next/navigation';
+import { api } from '@/lib/api';
 
 interface PaymentModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
   amount: string;
+  planId?: string;
 }
 
-export function PaymentModal({ open, onOpenChange, onSuccess, amount }: PaymentModalProps) {
+export function PaymentModal({ open, onOpenChange, onSuccess, amount, planId }: PaymentModalProps) {
   const router = useRouter();
   const [method, setMethod] = useState<'upi' | 'card' | 'wallet'>('upi');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
-  const handlePayment = () => {
+  const handlePayment = async () => {
+    if (!planId) return;
     setIsProcessing(true);
-    // Mock payment processing
-    setTimeout(() => {
-      setIsProcessing(false);
-      setIsSuccess(true);
-      
-      // Update role in store
-      if (useAuthStore.getState().user) {
-        const currentUser = useAuthStore.getState().user;
-        useAuthStore.getState().login({
-          ...currentUser!,
-          role: 'member'
-        });
-      }
+    
+    try {
+      // 1. Create order
+      const orderRes = await api.post('/membership/create-order', { planId });
+      const order = orderRes.data.data;
 
-      setTimeout(() => {
-        onSuccess();
-        router.push('/member/dashboard');
-      }, 2000);
-    }, 2000);
+      // 2. Open Razorpay Checkout
+      const options = {
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_xxxx",
+        amount: order.amount,
+        currency: order.currency,
+        name: "EcoXchange",
+        description: "Premium Membership",
+        order_id: order.id,
+        handler: async function (response: any) {
+          try {
+            // 3. Verify Payment
+            const verifyRes = await api.post('/membership/verify-payment', {
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature,
+            });
+            if (verifyRes.data.success) {
+              setIsProcessing(false);
+              setIsSuccess(true);
+              
+              const { user } = verifyRes.data.data;
+              if (useAuthStore.getState().user) {
+                useAuthStore.getState().updateUser({
+                  role: user.role,
+                  membershipStatus: user.membershipStatus,
+                });
+              }
+
+              setTimeout(() => {
+                onSuccess();
+                if (user.role === 'member') {
+                  router.push("/dashboard/member/dashboard");
+                }
+              }, 2000);
+            }
+          } catch (err) {
+            console.error("Payment verification failed", err);
+            setIsProcessing(false);
+          }
+        },
+        prefill: {
+          name: useAuthStore.getState().user?.name || "Member",
+          email: useAuthStore.getState().user?.email || "member@example.com",
+        },
+        theme: {
+          color: "#10b981"
+        }
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.on('payment.failed', function (response: any){
+        setIsProcessing(false);
+        console.error(response.error);
+      });
+      rzp.open();
+    } catch (err) {
+      console.error(err);
+      setIsProcessing(false);
+    }
   };
 
   return (

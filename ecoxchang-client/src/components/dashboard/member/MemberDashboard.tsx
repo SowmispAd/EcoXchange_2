@@ -13,6 +13,9 @@ import { Award, Leaf, Recycle, Calendar, Camera, ShoppingBag, Droplet, TreePine,
 import { MemberStats } from './MemberStats';
 import { useAuthStore } from '@/store/useAuthStore';
 
+import { useQuery } from '@tanstack/react-query';
+import { api } from '@/lib/api';
+
 const activityData = [
   { name: 'Mon', recycled: 12 },
   { name: 'Tue', recycled: 19 },
@@ -23,21 +26,28 @@ const activityData = [
   { name: 'Sun', recycled: 42 },
 ];
 
-const recentPickups = [
-  { id: 'PK-1001', date: 'Oct 24, 2023', type: 'Plastic & Paper', status: 'completed', points: '+150' },
-  { id: 'PK-1002', date: 'Oct 28, 2023', type: 'Electronics', status: 'completed', points: '+300' },
-  { id: 'PK-1003', date: 'Nov 02, 2023', type: 'Glass & Metal', status: 'scheduled', points: 'Pending' },
-  { id: 'PK-1004', date: 'Nov 10, 2023', type: 'Mixed Recyclables', status: 'requested', points: 'Pending' },
-];
-
-const marketplaceItems = [
-  { id: 1, name: 'Reusable Coffee Cup', points: 500, image: '☕' },
-  { id: 2, name: 'Organic Tote Bag', points: 300, image: '🛍️' },
-  { id: 3, name: '$10 Grocery Voucher', points: 1000, image: '🎫' },
-];
-
 export function MemberDashboard() {
   const name = useAuthStore((s) => s.user?.name ?? 'Member');
+
+  const { data: pickupsData } = useQuery({
+    queryKey: ['my-pickups'],
+    queryFn: async () => {
+      const res = await api.get('/pickups/my');
+      return res.data.data;
+    },
+  });
+
+  const { data: marketplaceData } = useQuery({
+    queryKey: ['rewards'],
+    queryFn: async () => {
+      const res = await api.get('/rewards');
+      return res.data.data;
+    },
+  });
+
+  const recentPickups = pickupsData || [];
+  const marketplaceItems = marketplaceData || [];
+
   return (
     <div className="flex flex-col gap-6">
       <p className="text-2xl font-semibold tracking-tight">
@@ -183,23 +193,23 @@ export function MemberDashboard() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {recentPickups.map((pickup) => (
-                    <TableRow key={pickup.id}>
-                      <TableCell className="font-medium">{pickup.date}</TableCell>
-                      <TableCell>{pickup.type}</TableCell>
+                  {recentPickups.map((pickup: any) => (
+                    <TableRow key={pickup._id}>
+                      <TableCell className="font-medium">{new Date(pickup.scheduledDate || pickup.createdAt).toLocaleDateString()}</TableCell>
+                      <TableCell className="capitalize">{pickup.wasteType || pickup.type}</TableCell>
                       <TableCell>
                         <Badge 
                           variant={
                             pickup.status === 'completed' ? 'default' : 
                             pickup.status === 'scheduled' ? 'secondary' : 'outline'
                           }
-                          className={pickup.status === 'completed' ? 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20' : ''}
+                          className={pickup.status === 'completed' ? 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 capitalize' : 'capitalize'}
                         >
                           {pickup.status}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right font-medium text-emerald-600 dark:text-emerald-400">
-                        {pickup.points}
+                        +{pickup.ecoPointsAwarded || pickup.earnedPoints || pickup.points || 0}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -209,15 +219,15 @@ export function MemberDashboard() {
             
             <TabsContent value="rewards" className="pt-6 pb-2">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {marketplaceItems.map(item => (
-                  <Card key={item.id} className="border border-muted hover:border-primary/50 transition-colors">
+                {marketplaceItems.map((item: any) => (
+                  <Card key={item._id || item.id} className="border border-muted hover:border-primary/50 transition-colors">
                     <CardHeader className="text-center pb-2">
-                      <div className="text-6xl mb-2">{item.image}</div>
-                      <CardTitle className="text-base">{item.name}</CardTitle>
+                      <div className="text-6xl mb-2">{item.image || '🎁'}</div>
+                      <CardTitle className="text-base">{item.title || item.name}</CardTitle>
                     </CardHeader>
                     <CardFooter className="flex justify-between items-center border-t pt-4">
                       <div className="flex items-center gap-1 font-bold text-primary">
-                        <Gift className="h-4 w-4" /> {item.points}
+                        <Gift className="h-4 w-4" /> {item.pointsRequired || item.points}
                       </div>
                       <Button variant="outline" size="sm">Redeem</Button>
                     </CardFooter>

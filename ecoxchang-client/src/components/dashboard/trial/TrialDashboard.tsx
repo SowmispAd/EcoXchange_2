@@ -1,80 +1,134 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
+import { useState, useEffect, useRef } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { 
   Rocket, 
   ShieldCheck, 
   Sparkles, 
   Clock, 
-  Gift,
-  ShoppingBag,
-  Users,
-  Leaf,
-  Recycle,
-  CheckCircle2,
-  Trash2,
-  AlertCircle,
-  Camera,
-  Upload,
+  ShoppingBag, 
+  Recycle, 
+  CheckCircle2, 
+  Upload, 
   ArrowRight,
-} from 'lucide-react';
+  Camera,
+  AlertCircle,
+  Leaf
+} from "lucide-react";
 import Link from "next/link";
 import { useAuthStore } from "@/store/useAuthStore";
+import { dashboardPath } from "@/config/role-nav";
 import { SubscriptionModal } from "../SubscriptionModal";
-import { motion, AnimatePresence } from 'framer-motion';
-
-const weeklySchedule = [
-  { day: 'Monday', waste: 'Wet Waste', color: 'text-emerald-600', bg: 'bg-emerald-50' },
-  { day: 'Tuesday', waste: 'Plastic Waste', color: 'text-blue-600', bg: 'bg-blue-50' },
-  { day: 'Wednesday', waste: 'Paper Waste', color: 'text-amber-600', bg: 'bg-amber-50' },
-  { day: 'Thursday', waste: 'Metal Waste', color: 'text-slate-600', bg: 'bg-slate-50' },
-  { day: 'Friday', waste: 'E-Waste', color: 'text-purple-600', bg: 'bg-purple-50' },
-  { day: 'Saturday', waste: 'Mixed Recycling', color: 'text-cyan-600', bg: 'bg-cyan-50' },
-  { day: 'Sunday', waste: 'Awareness Day', color: 'text-rose-600', bg: 'bg-rose-50' },
-];
+import { motion, AnimatePresence } from "framer-motion";
+import { api } from "@/lib/api";
+import toast from "react-hot-toast";
 
 export function TrialDashboard() {
-  const [streak, setStreak] = useState(0);
-  const ecoPoints = useAuthStore((s) => s.user?.ecoPoints ?? 120);
+  const user = useAuthStore((s) => s.user);
+  const ecoPoints = user?.ecoPoints ?? 0;
+  
+  const [streak, setStreak] = useState(user?.streak ?? 0);
+  const [schedule, setSchedule] = useState<{ day: string; wasteCategory: string; instructions: string } | null>(null);
+  const [submissions, setSubmissions] = useState<any[]>([]);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [lastSubmission, setLastSubmission] = useState<string | null>(null);
-  const [pendingVerification, setPendingVerification] = useState(false);
 
-  const handleVerify = () => {
-    setIsSubmitting(true);
-    // Mocking submission process
-    setTimeout(() => {
-      setIsSubmitting(false);
-      setPendingVerification(true);
-      setLastSubmission(new Date().toLocaleDateString());
-      
-      // Mocking supervisor approval after 3 seconds
-      setTimeout(() => {
-        setPendingVerification(false);
-        setStreak(prev => Math.min(prev + 1, 5));
-      }, 3000);
-    }, 1500);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const fetchProgress = async () => {
+    try {
+      const res = await api.get("/trial/progress");
+      if (res.data?.success) {
+        setStreak(res.data.data.currentStreak);
+      }
+    } catch (err) {
+      console.error("Failed to fetch progress", err);
+    }
+  };
+
+  const fetchSchedule = async () => {
+    try {
+      const res = await api.get("/trial/schedule");
+      if (res.data?.success) {
+        setSchedule(res.data.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch schedule", err);
+    }
+  };
+
+  const fetchSubmissions = async () => {
+    try {
+      const res = await api.get("/trial/submissions/my");
+      if (res.data?.success) {
+        setSubmissions(res.data.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch submissions", err);
+    }
   };
 
   useEffect(() => {
-    if (streak === 5) {
-      const timer = setTimeout(() => {
-        setShowUpgradeModal(true);
-      }, 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [streak]);
+    fetchProgress();
+    fetchSchedule();
+    fetchSubmissions();
+  }, []);
 
-  const currentDay = new Date().toLocaleDateString('en-US', { weekday: 'long' });
-  const todaySchedule = weeklySchedule.find(s => s.day === currentDay);
+  const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append("image", file);
+
+    try {
+      // 1. Upload to Cloudinary via backend
+      const uploadRes = await api.post("/trial/upload", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      if (uploadRes.data?.success) {
+        const imageUrl = uploadRes.data.url;
+        toast.success("Photo uploaded successfully! Submitting proof...");
+
+        // 2. Submit trial proof
+        setIsSubmitting(true);
+        const submitRes = await api.post("/trial/submissions", { imageUrl });
+        if (submitRes.data?.success) {
+          toast.success("Trial proof submitted for verification!");
+          fetchSubmissions();
+          fetchProgress();
+        }
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to submit photo proof");
+    } finally {
+      setIsUploading(false);
+      setIsSubmitting(false);
+    }
+  };
+
+  const triggerFileSelect = () => {
+    fileInputRef.current?.click();
+  };
+
+  const hasPending = submissions.some((s) => s.status === "pending_verification");
 
   return (
     <div className="flex flex-col gap-8 pb-12">
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handlePhotoSelect}
+        accept="image/*"
+        className="hidden"
+      />
+
       {/* Streak Hero Section */}
       <div className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-emerald-600 to-teal-800 p-8 md:p-12 text-white shadow-2xl">
         <div className="absolute top-0 right-0 p-12 opacity-10 pointer-events-none rotate-12">
@@ -109,16 +163,16 @@ export function TrialDashboard() {
 
           <div className="bg-white/10 backdrop-blur-xl rounded-[2rem] p-8 border border-white/20 text-center w-full md:w-80 shadow-inner">
             <h3 className="text-xl font-bold mb-6">Today's Collection</h3>
-            <div className={`rounded-2xl ${todaySchedule?.bg || 'bg-white/20'} p-6 mb-6 transform hover:scale-105 transition-transform`}>
-              <p className={`text-sm font-bold uppercase tracking-wider mb-2 ${todaySchedule?.color || 'text-white'}`}>{todaySchedule?.day}</p>
-              <p className={`text-2xl font-black ${todaySchedule?.color || 'text-white'}`}>{todaySchedule?.waste}</p>
+            <div className="rounded-2xl bg-white/20 p-6 mb-6 transform hover:scale-105 transition-transform">
+              <p className="text-sm font-bold uppercase tracking-wider mb-2 text-white">{schedule?.day || "Loading..."}</p>
+              <p className="text-2xl font-black text-white">{schedule?.wasteCategory || "Please wait"}</p>
             </div>
             <Button 
               className="w-full h-14 rounded-2xl bg-amber-400 hover:bg-amber-500 text-amber-950 font-black text-lg shadow-lg group"
-              onClick={handleVerify}
-              disabled={isSubmitting || pendingVerification || streak === 5}
+              onClick={triggerFileSelect}
+              disabled={isUploading || isSubmitting || hasPending || streak >= 5}
             >
-              {isSubmitting ? "Submitting..." : pendingVerification ? "Verifying..." : "Submit Photo"}
+              {isUploading ? "Uploading..." : isSubmitting ? "Submitting..." : hasPending ? "Pending Verification" : "Submit Photo"}
               <Camera className="ml-2 h-5 w-5 group-hover:rotate-12 transition-transform" />
             </Button>
           </div>
@@ -126,31 +180,25 @@ export function TrialDashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Weekly Schedule Card */}
+        {/* Daily Guideline Card */}
         <Card className="lg:col-span-1 border-none shadow-xl bg-background/50 backdrop-blur-md rounded-3xl overflow-hidden">
           <CardHeader className="bg-muted/50 pb-6">
             <CardTitle className="flex items-center gap-2">
               <Clock className="h-5 w-5 text-primary" />
-              Weekly Schedule
+              Daily Collection Details
             </CardTitle>
-            <CardDescription>Always know what to recycle next</CardDescription>
+            <CardDescription>Instructions for {schedule?.day || "today"}</CardDescription>
           </CardHeader>
-          <CardContent className="p-0">
-            <div className="divide-y">
-              {weeklySchedule.map((item, i) => (
-                <div 
-                  key={i} 
-                  className={`flex items-center justify-between p-4 px-6 transition-colors ${item.day === currentDay ? 'bg-primary/10' : ''}`}
-                >
-                  <div>
-                    <p className={`text-sm font-bold ${item.day === currentDay ? 'text-primary' : 'text-muted-foreground'}`}>{item.day}</p>
-                    <p className="font-medium">{item.waste}</p>
-                  </div>
-                  {item.day === currentDay && (
-                    <Badge variant="outline" className="bg-primary/20 text-primary border-primary/20">Today</Badge>
-                  )}
-                </div>
-              ))}
+          <CardContent className="p-6">
+            <div className="space-y-4">
+              <div className="p-4 bg-primary/10 rounded-2xl border border-primary/20">
+                <p className="text-sm font-bold text-primary mb-1">Waste Category</p>
+                <p className="font-bold text-lg">{schedule?.wasteCategory || "Loading..."}</p>
+              </div>
+              <div className="p-4 bg-muted rounded-2xl">
+                <p className="text-sm font-bold text-muted-foreground mb-1">Instructions</p>
+                <p className="text-sm font-medium leading-relaxed">{schedule?.instructions || "Instructions will load shortly."}</p>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -159,54 +207,49 @@ export function TrialDashboard() {
         <div className="lg:col-span-2 space-y-8">
           <Card className="border-none shadow-xl bg-background/50 backdrop-blur-md rounded-3xl overflow-hidden">
             <CardHeader>
-              <CardTitle>Trash Verification Status</CardTitle>
-              <CardDescription>Monitor your recent submissions and supervisor feedback</CardDescription>
+              <CardTitle>Verification History & Status</CardTitle>
+              <CardDescription>Track all submitted proofs and supervisor remarks</CardDescription>
             </CardHeader>
             <CardContent>
               <AnimatePresence mode="wait">
-                {pendingVerification ? (
-                  <motion.div 
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    className="flex flex-col items-center justify-center py-12 text-center"
-                  >
-                    <div className="relative mb-6">
-                      <div className="h-20 w-20 rounded-full border-4 border-primary border-t-transparent animate-spin" />
-                      <ShieldCheck className="h-10 w-10 text-primary absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
-                    </div>
-                    <h4 className="text-xl font-bold mb-2">Verification in Progress</h4>
-                    <p className="text-muted-foreground max-w-sm">
-                      Our supervisor is checking your submission for <span className="font-bold text-primary">{todaySchedule?.waste}</span>. This usually takes a few moments.
-                    </p>
-                  </motion.div>
-                ) : streak === 5 ? (
-                  <motion.div 
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="flex flex-col items-center justify-center py-12 text-center"
-                  >
-                    <div className="h-20 w-20 bg-emerald-100 rounded-full flex items-center justify-center mb-6">
-                      <CheckCircle2 className="h-10 w-10 text-emerald-600" />
-                    </div>
-                    <h4 className="text-2xl font-black mb-2">Goal Achieved!</h4>
-                    <p className="text-muted-foreground max-w-sm mb-8">
-                      You've successfully completed your trial period. You're now eligible for Permanent Membership!
-                    </p>
-                    <Button size="lg" className="rounded-full px-12 bg-primary hover:bg-primary/90" onClick={() => setShowUpgradeModal(true)}>
-                      Claim Permanent Status <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                  </motion.div>
-                ) : (
+                {submissions.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed rounded-2xl bg-muted/20">
                     <div className="h-16 w-16 bg-muted rounded-full flex items-center justify-center mb-4 text-muted-foreground">
                       <Upload className="h-8 w-8" />
                     </div>
-                    <h4 className="font-bold text-muted-foreground mb-1">No Recent Submissions</h4>
-                    <p className="text-sm text-muted-foreground mb-6">Upload a photo of today's {todaySchedule?.waste} to increase your streak.</p>
-                    <Button variant="outline" className="rounded-full" onClick={handleVerify}>
+                    <h4 className="font-bold text-muted-foreground mb-1">No Submissions Yet</h4>
+                    <p className="text-sm text-muted-foreground mb-6">Upload a photo of your waste to get started.</p>
+                    <Button variant="outline" className="rounded-full" onClick={triggerFileSelect}>
                       Upload Photo
                     </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2">
+                    {submissions.map((sub) => (
+                      <div key={sub._id} className="flex items-center justify-between p-4 bg-muted/30 border rounded-2xl">
+                        <div className="flex items-center gap-3">
+                          <img src={sub.imageUrl} className="w-12 h-12 object-cover rounded-xl border" alt="Proof" />
+                          <div>
+                            <p className="text-sm font-bold">Submitted Proof</p>
+                            <p className="text-xs text-muted-foreground">{new Date(sub.createdAt).toLocaleDateString()}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {sub.status === "pending_verification" && (
+                            <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-200">Pending</Badge>
+                          )}
+                          {sub.status === "approved" && (
+                            <Badge variant="outline" className="bg-emerald-100 text-emerald-800 border-emerald-200">Approved</Badge>
+                          )}
+                          {sub.status === "rejected" && (
+                            <div className="text-right">
+                              <Badge variant="outline" className="bg-rose-100 text-rose-800 border-rose-200">Rejected</Badge>
+                              <p className="text-[10px] text-rose-500 mt-1 max-w-[150px] truncate">{sub.remarks}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
               </AnimatePresence>
@@ -223,7 +266,7 @@ export function TrialDashboard() {
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-emerald-600 dark:text-emerald-500 font-medium leading-relaxed">
-                  Trial members who reach a 5-day streak get a 10% bonus on their first month's EcoPoints!
+                  Completing your 5-day trial period successfully awards +50 EcoPoints immediately!
                 </p>
               </CardContent>
             </Card>
@@ -237,7 +280,7 @@ export function TrialDashboard() {
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-blue-600 dark:text-blue-500 font-medium leading-relaxed">
-                  Make sure your waste is cleaned and separated properly for a 100% approval rate.
+                  Clear, well-lit photos of separated recycling waste guarantee fastest supervisor approvals.
                 </p>
               </CardContent>
             </Card>
@@ -245,44 +288,35 @@ export function TrialDashboard() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Link href="/trial/marketplace" className="block">
+      <div className="grid gap-4 md:grid-cols-2">
+        <Link href={dashboardPath("trial", "marketplace")} className="block">
           <Card className="h-full border-none shadow-md hover:shadow-lg transition-shadow bg-background/80">
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <ShoppingBag className="h-4 w-4 text-primary" />
                 Marketplace
               </CardTitle>
-              <CardDescription>Browse recycled products (buy only while on trial).</CardDescription>
+              <CardDescription>Browse and buy eco-products directly.</CardDescription>
             </CardHeader>
           </Card>
         </Link>
-        <Link href="/trial/referrals" className="block">
-          <Card className="h-full border-none shadow-md hover:shadow-lg transition-shadow bg-background/80">
+        {streak >= 5 && (
+          <Card 
+            className="h-full border-none bg-gradient-to-r from-amber-400 to-orange-500 text-amber-950 shadow-md hover:shadow-lg cursor-pointer transition-all"
+            onClick={() => setShowUpgradeModal(true)}
+          >
             <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Users className="h-4 w-4 text-primary" />
-                Referrals
+              <CardTitle className="text-base flex items-center gap-2 font-black">
+                <Sparkles className="h-4 w-4 text-amber-950" />
+                Claim Permanent Status
               </CardTitle>
-              <CardDescription>Share your link and earn bonus EcoPoints.</CardDescription>
+              <CardDescription className="text-amber-900 font-bold">Upgrade to unlock full features & Smart Bins!</CardDescription>
             </CardHeader>
           </Card>
-        </Link>
-        <Link href="/trial/rewards" className="block">
-          <Card className="h-full border-none shadow-md hover:shadow-lg transition-shadow bg-background/80">
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Gift className="h-4 w-4 text-primary" />
-                Rewards · {ecoPoints} pts
-              </CardTitle>
-              <CardDescription>Discounts, cashback, and free refills.</CardDescription>
-            </CardHeader>
-          </Card>
-        </Link>
+        )}
       </div>
 
       <SubscriptionModal open={showUpgradeModal} onOpenChange={setShowUpgradeModal} />
     </div>
   );
 }
-

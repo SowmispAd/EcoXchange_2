@@ -1,7 +1,7 @@
 "use client";
 
 import { Bell, Check, Leaf } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,19 +11,23 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { mockNotifications } from "@/lib/mock/data";
+import { cn } from "@/lib/utils";
 
 export function NotificationBell() {
   const unread = mockNotifications.filter((n) => !n.read).length;
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger>
-        <Button variant="outline" size="icon" className="rounded-full relative">
-          <Bell className="h-5 w-5 text-muted-foreground" />
-          {unread > 0 && (
-            <span className="absolute top-1 right-1 min-w-[8px] h-2 px-0.5 bg-destructive rounded-full" />
-          )}
-        </Button>
+      <DropdownMenuTrigger
+        className={cn(
+          buttonVariants({ variant: "outline", size: "icon" }),
+          "rounded-full relative shrink-0",
+        )}
+      >
+        <Bell className="h-5 w-5 text-muted-foreground" />
+        {unread > 0 && (
+          <span className="absolute top-1 right-1 min-w-[8px] h-2 px-0.5 bg-destructive rounded-full" />
+        )}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-80">
         <DropdownMenuLabel>Notifications</DropdownMenuLabel>
