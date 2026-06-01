@@ -12,10 +12,9 @@ export function Tooltip({ children }: { children: React.ReactNode }) {
 }
 
 export function TooltipTrigger({
-  asChild,
   children,
   ...rest
-}: React.HTMLAttributes<HTMLElement> & { asChild?: boolean }) {
+}: React.HTMLAttributes<HTMLElement>) {
   return (
     <span {...rest} className={cn("inline-flex", rest.className)}>
       {children}

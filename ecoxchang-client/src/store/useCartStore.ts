@@ -51,8 +51,9 @@ export const useCartStore = create<CartState>((set, get) => ({
         set({ items: res.data.data.items || [] });
         toast.success("Added to cart!");
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to add to cart");
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      toast.error(e.response?.data?.message || "Failed to add to cart");
     }
   },
 
@@ -62,8 +63,9 @@ export const useCartStore = create<CartState>((set, get) => ({
       if (res.data?.success) {
         set({ items: res.data.data.items || [] });
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to update quantity");
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      toast.error(e.response?.data?.message || "Failed to update quantity");
     }
   },
 
@@ -74,8 +76,9 @@ export const useCartStore = create<CartState>((set, get) => ({
         set({ items: res.data.data.items || [] });
         toast.success("Item removed from cart");
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to remove item");
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      toast.error(e.response?.data?.message || "Failed to remove item");
     }
   },
 
@@ -84,6 +87,7 @@ export const useCartStore = create<CartState>((set, get) => ({
       // Dynamically load Razorpay SDK
       const loadRazorpayScript = () => {
         return new Promise((resolve) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           if ((window as any).Razorpay) {
             resolve(true);
             return;
@@ -109,7 +113,7 @@ export const useCartStore = create<CartState>((set, get) => ({
       });
 
       if (orderRes.data?.success) {
-        const { order, razorpayOrderId, amount, currency } = orderRes.data.data;
+        const { razorpayOrderId, amount, currency } = orderRes.data.data;
 
         // 2. Open Razorpay Checkout modal
         const options = {
@@ -119,6 +123,7 @@ export const useCartStore = create<CartState>((set, get) => ({
           name: "EcoXchange",
           description: "Marketplace Purchase",
           order_id: razorpayOrderId,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           handler: async function (response: any) {
             // 3. Send response to payment verification endpoint
             try {
@@ -133,7 +138,7 @@ export const useCartStore = create<CartState>((set, get) => ({
                 await get().fetchCart(); // clear / refresh cart
                 window.location.href = "/trial/marketplace/confirmation";
               }
-            } catch (err) {
+            } catch {
               toast.error("Payment verification failed. Please contact support.");
             }
           },
@@ -147,11 +152,13 @@ export const useCartStore = create<CartState>((set, get) => ({
           },
         };
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const rzp = new (window as any).Razorpay(options);
         rzp.open();
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Checkout failed");
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      toast.error(e.response?.data?.message || "Checkout failed");
     }
   }
 }));

@@ -45,8 +45,30 @@ export function MemberDashboard() {
     },
   });
 
+  const { data: walletData } = useQuery({
+    queryKey: ["wallet-me"],
+    queryFn: async () => {
+      const res = await api.get("/wallet/me");
+      return res.data.data;
+    },
+  });
+
   const recentPickups = pickupsData || [];
   const marketplaceItems = marketplaceData || [];
+  const ecoPoints = walletData?.ecoPointsBalance || 0;
+  
+  // Calculate total recycled from pickups
+  const totalRecycled = recentPickups
+    .filter((p: any) => p.status === 'completed')
+    .reduce((sum: number, p: any) => sum + (Number(p.weight) || 0), 0);
+    
+  // Find next scheduled pickup
+  const nextPickup = recentPickups
+    .filter((p: any) => p.status === 'scheduled' && new Date(p.scheduledDate) >= new Date())
+    .sort((a: any, b: any) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime())[0];
+    
+  const nextPickupDate = nextPickup ? new Date(nextPickup.scheduledDate).toLocaleDateString('en-US', { month: 'short', day: '2-digit' }) : 'None';
+  const activeRequests = recentPickups.filter((p: any) => p.status === 'scheduled' || p.status === 'pending').length;
 
   return (
     <div className="flex flex-col gap-6">
@@ -58,28 +80,27 @@ export function MemberDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           title="Total Recycled"
-          value="142 kg"
+          value={`${totalRecycled} kg`}
           icon={Recycle}
-          description="Top 15% in your area"
-          trend={{ value: 12, isPositive: true }}
+          description="Your lifetime impact"
+          trend={totalRecycled > 0 ? { value: 100, isPositive: true } : undefined}
         />
         <StatCard
           title="Next Pickup"
-          value="Nov 02"
+          value={nextPickupDate}
           icon={Calendar}
-          description="10:00 AM - 12:00 PM"
+          description={nextPickup ? "10:00 AM - 12:00 PM" : "Schedule now"}
         />
-        {/* Added more stats for functionalization */}
         <StatCard
           title="EcoPoints Earned"
-          value="2,450"
+          value={ecoPoints.toLocaleString()}
           icon={Award}
-          description="Last 30 days"
+          description="Available balance"
           trend={{ value: 8, isPositive: true }}
         />
         <StatCard
           title="Active Requests"
-          value="2"
+          value={activeRequests.toString()}
           icon={Calendar}
           description="Pending pickup"
         />
