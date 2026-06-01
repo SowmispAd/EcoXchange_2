@@ -6,7 +6,13 @@ import { DashboardCard } from "@/components/eco/DashboardCard";
 export default function DeliveryProofsPage() {
   return (
     <DashboardCard title="Proof uploads" description="Attach geotagged photos for pickups and drop-offs.">
-      <CameraCapture label="Proof of service" />
+      <div className="max-w-2xl mx-auto mt-4">
+        <CameraCapture 
+          onCapture={(blob, url) => {
+            console.log("Captured image for proof");
+          }} 
+        />
+      </div>
     </DashboardCard>
   );
 }

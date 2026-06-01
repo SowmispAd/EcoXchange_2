@@ -23,7 +23,7 @@ const roles = [
     icon: Zap,
     color: 'from-amber-400 to-orange-500',
     features: ['5-day streak goal', 'Basic waste tracking', 'Community access'],
-    link: '/auth/trial-login'
+    link: '/login'
   },
   {
     id: 'member',
@@ -32,7 +32,7 @@ const roles = [
     icon: UserCircle,
     color: 'from-emerald-400 to-teal-600',
     features: ['Unlimited pickups', 'Smart bin included', 'EcoPoints wallet'],
-    link: '/auth/member-login'
+    link: '/login'
   },
   {
     id: 'supervisor',
@@ -41,7 +41,7 @@ const roles = [
     icon: ShieldCheck,
     color: 'from-blue-500 to-indigo-600',
     features: ['Verification system', 'Area monitoring', 'Team management'],
-    link: '/auth/supervisor-login'
+    link: '/login'
   },
   {
     id: 'delivery',
@@ -50,7 +50,7 @@ const roles = [
     icon: Truck,
     color: 'from-purple-500 to-pink-600',
     features: ['Route optimization', 'Pickup logs', 'Performance tracking'],
-    link: '/auth/delivery-login'
+    link: '/login'
   },
   {
     id: 'recycler',
@@ -59,7 +59,7 @@ const roles = [
     icon: Recycle,
     color: 'from-cyan-500 to-blue-600',
     features: ['Processing pipeline', 'Inventory management', 'Impact reports'],
-    link: '/auth/recycler-login'
+    link: '/login'
   },
   {
     id: 'admin',
@@ -68,7 +68,7 @@ const roles = [
     icon: Settings,
     color: 'from-gray-700 to-slate-900',
     features: ['Global analytics', 'User management', 'Revenue tracking'],
-    link: '/auth/admin-login'
+    link: '/login'
   }
 ];
 

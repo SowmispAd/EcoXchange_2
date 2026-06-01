@@ -13,6 +13,8 @@ import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 import { api } from "@/lib/api";
 import { mapApiUserToStore } from "@/lib/map-api-user";
+import { auth } from "@/lib/firebase";
+import { RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth";
 
 export default function VerifyOtpPage() {
   const router = useRouter();
@@ -34,43 +36,85 @@ export default function VerifyOtpPage() {
     }
   }, [cooldown]);
 
+  const setupRecaptcha = () => {
+    if (typeof window === "undefined") return;
+    if ((window as any).recaptchaVerifier) {
+      try {
+        (window as any).recaptchaVerifier.clear();
+      } catch (e) {}
+    }
+    
+    (window as any).recaptchaVerifier = new RecaptchaVerifier(
+      auth,
+      "recaptcha-container",
+      {
+        size: "invisible",
+        callback: () => {
+          // reCAPTCHA solved
+        },
+        "expired-callback": () => {
+          toast.error("reCAPTCHA expired. Please try again.");
+        }
+      }
+    );
+  };
+
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await api.post("/auth/verify-otp", {
-        phoneNumber: pendingPhone,
-        otp
-      });
+      const confirmationResult = (window as any).confirmationResult;
+      if (!confirmationResult) {
+        toast.error("Verification session expired. Please request a new OTP.");
+        router.push("/login");
+        return;
+      }
+
+      const result = await confirmationResult.confirm(otp);
+      const firebaseUser = result.user;
+      const idToken = await firebaseUser.getIdToken();
+
+      const res = await api.post("/auth/firebase", { idToken });
 
       if (res.data?.success) {
         toast.success("OTP Verified!");
-        if (res.data.isNewUser) {
-          setIsNewUser(true);
-          router.push("/register");
-        } else {
-          const { token, data: user, modelName } = res.data;
-          const mappedUser = mapApiUserToStore(user, modelName);
-          setSession({ token, user: mappedUser, backendModel: modelName });
-          router.push(defaultHomeForRole(mappedUser.role));
-        }
+        const { token, data } = res.data;
+        const { user: backendUser, modelName } = data;
+        const mappedUser = mapApiUserToStore(backendUser, modelName);
+        setSession({ token, user: mappedUser, backendModel: modelName });
+        router.push(defaultHomeForRole(mappedUser.role));
       }
     } catch (err: any) {
-      toast.error(err.response?.data?.message || "Invalid OTP code");
+      console.error("OTP verification error:", err);
+      if (err.response?.status === 404) {
+        toast.success("Phone verified. Please complete your registration!");
+        setIsNewUser(true);
+        router.push("/register");
+      } else {
+        toast.error(err.response?.data?.message || err.message || "Invalid OTP code");
+      }
     } finally {
       setLoading(false);
     }
   };
 
   const handleResend = async () => {
+    if (!pendingPhone) return;
     try {
-      const res = await api.post("/auth/send-otp", { phoneNumber: pendingPhone });
-      if (res.data?.success) {
-        toast.success("New OTP sent!");
-        setCooldown(60);
+      setupRecaptcha();
+      const appVerifier = (window as any).recaptchaVerifier;
+      if (!appVerifier) {
+        throw new Error("reCAPTCHA verifier is not initialized");
       }
+
+      const confirmationResult = await signInWithPhoneNumber(auth, pendingPhone, appVerifier);
+      (window as any).confirmationResult = confirmationResult;
+
+      toast.success("New OTP sent!");
+      setCooldown(60);
     } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to resend OTP");
+      console.error("Firebase Resend Error:", err);
+      toast.error(err.message || "Failed to resend OTP");
     }
   };
 
@@ -120,6 +164,7 @@ export default function VerifyOtpPage() {
                 {loading ? "Verifying..." : "Verify Code"}
               </Button>
             </form>
+            <div id="recaptcha-container" className="hidden" />
           </CardContent>
           <CardFooter className="flex flex-col gap-4 border-t p-6">
             <div className="text-sm text-center text-muted-foreground">

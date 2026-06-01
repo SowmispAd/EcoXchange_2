@@ -10,13 +10,11 @@ import { NAV_BY_ROLE, type AppRole } from "@/config/role-nav";
 
 interface RoleBasedSidebarProps {
   className?: string;
-  mobileMenuOpen?: boolean;
   setMobileMenuOpen?: (open: boolean) => void;
 }
 
 export function RoleBasedSidebar({
   className,
-  mobileMenuOpen,
   setMobileMenuOpen,
 }: RoleBasedSidebarProps) {
   const pathname = usePathname();
@@ -70,6 +68,7 @@ export function RoleBasedSidebar({
         <div className="flex items-center space-x-3 px-3 py-2 mb-4 bg-muted/50 rounded-lg">
           <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden flex-shrink-0">
             {user?.avatar ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
               <img src={user.avatar} alt={user.name} className="h-full w-full object-cover" />
             ) : (
               <span className="text-primary font-bold">{user?.name?.charAt(0) || "U"}</span>

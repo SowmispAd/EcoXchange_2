@@ -4,7 +4,6 @@ import { toAppRole } from "@/lib/role-map";
 /** Backend user document → Zustand `User` */
 export function mapApiUserToStore(
   u: Record<string, unknown> & { _id?: unknown },
-  _modelName?: string,
 ): User {
   const id = String(u._id ?? u.id ?? "");
   const apiRole = String(u.role ?? "citizen");

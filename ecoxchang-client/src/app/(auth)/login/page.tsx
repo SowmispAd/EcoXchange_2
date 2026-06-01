@@ -13,6 +13,8 @@ import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 import { api } from "@/lib/api";
 import { mapApiUserToStore } from "@/lib/map-api-user";
+import { auth } from "@/lib/firebase";
+import { RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -27,6 +29,29 @@ export default function LoginPage() {
   // Phone/OTP states
   const [phoneNumber, setPhoneNumber] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const setupRecaptcha = () => {
+    if (typeof window === "undefined") return;
+    if ((window as any).recaptchaVerifier) {
+      try {
+        (window as any).recaptchaVerifier.clear();
+      } catch (e) {}
+    }
+    
+    (window as any).recaptchaVerifier = new RecaptchaVerifier(
+      auth,
+      "recaptcha-container",
+      {
+        size: "invisible",
+        callback: () => {
+          // reCAPTCHA solved
+        },
+        "expired-callback": () => {
+          toast.error("reCAPTCHA expired. Please try again.");
+        }
+      }
+    );
+  };
 
   const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,14 +76,21 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await api.post("/auth/send-otp", { phoneNumber });
-      if (res.data?.success) {
-        setPendingPhone(phoneNumber);
-        toast.success("OTP sent to your phone!");
-        router.push("/verify-otp");
+      setupRecaptcha();
+      const appVerifier = (window as any).recaptchaVerifier;
+      if (!appVerifier) {
+        throw new Error("reCAPTCHA verifier is not initialized");
       }
+
+      const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
+      (window as any).confirmationResult = confirmationResult;
+
+      setPendingPhone(phoneNumber);
+      toast.success("OTP sent to your phone!");
+      router.push("/verify-otp");
     } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to send OTP");
+      console.error("Firebase Auth Error:", err);
+      toast.error(err.message || "Failed to send OTP via Firebase");
     } finally {
       setLoading(false);
     }
@@ -173,6 +205,7 @@ export default function LoginPage() {
                 </Button>
               </form>
             )}
+            <div id="recaptcha-container" className="hidden" />
           </CardContent>
           <CardFooter className="flex justify-center border-t p-6">
             <div className="text-sm text-muted-foreground">

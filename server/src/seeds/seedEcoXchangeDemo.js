@@ -1,6 +1,8 @@
 /**
- * Seed demo accounts for EcoXchange (phones +919000000001 … 006).
+ * Seed demo accounts for EcoXchange.
  * Run: npm run seed (from server/)
+ * Demo password for all accounts: Password123!
+ * Demo phones: +919000000001 through +919000000006
  */
 require("dotenv").config();
 const bcrypt = require("bcryptjs");
@@ -20,16 +22,17 @@ const PASS = "Password123!";
 
 async function upsertUser(email, data) {
   const hash = await bcrypt.hash(PASS, 10);
-  await User.findOneAndUpdate(
+  return User.findOneAndUpdate(
     { email },
     { ...data, email, password: hash },
-    { upsert: true, new: true },
+    { upsert: true, new: true, setDefaultsOnInsert: true },
   );
 }
 
 async function run() {
   await connectDB();
 
+  // Platform settings
   await PlatformSettings.deleteMany({
     key: { $in: ["minWithdrawalAmount", "marketplaceCommissionPercent", "settlementDays"] },
   });
@@ -39,25 +42,27 @@ async function run() {
     { key: "settlementDays", value: 3 },
   ]);
 
+  // Trial user — role: "citizen", membershipStatus: "trial"
   await upsertUser("trial.demo@ecoxchange.app", {
-    name: "Trial Demo",
-    phone: "+919000000001",
-    role: "trial_member",
+    fullName: "Trial Demo",
+    phoneNumber: "+919000000001",
+    role: "citizen",
     ecoPoints: 200,
-    streakCount: 1,
+    streak: 1,
     membershipStatus: "trial",
   });
 
+  // Member user — role: "citizen", membershipStatus: "member"
   await upsertUser("member.demo@ecoxchange.app", {
-    name: "Member Demo",
-    phone: "+919000000002",
-    role: "member",
+    fullName: "Member Demo",
+    phoneNumber: "+919000000002",
+    role: "citizen",
     ecoPoints: 2400,
-    streakCount: 5,
-    membershipStatus: "active",
-    trialCompleted: true,
+    streak: 5,
+    membershipStatus: "member",
   });
 
+  // Supervisor
   const supHash = await bcrypt.hash(PASS, 10);
   await Supervisor.findOneAndUpdate(
     { email: "supervisor.demo@ecoxchange.app" },
@@ -71,6 +76,7 @@ async function run() {
     { upsert: true, new: true },
   );
 
+  // Delivery agent
   const agHash = await bcrypt.hash(PASS, 10);
   await DeliveryAgent.findOneAndUpdate(
     { email: "delivery.demo@ecoxchange.app" },
@@ -84,6 +90,7 @@ async function run() {
     { upsert: true, new: true },
   );
 
+  // Recycler
   const recHash = await bcrypt.hash(PASS, 10);
   await Recycler.findOneAndUpdate(
     { email: "recycler.demo@ecoxchange.app" },
@@ -98,6 +105,7 @@ async function run() {
     { upsert: true, new: true },
   );
 
+  // Admin
   const adHash = await bcrypt.hash(PASS, 10);
   await Admin.findOneAndUpdate(
     { email: "admin.demo@ecoxchange.app" },
@@ -111,11 +119,13 @@ async function run() {
     { upsert: true, new: true },
   );
 
+  // Fetch created documents for wallet seeding
   const trial = await User.findOne({ email: "trial.demo@ecoxchange.app" });
   const member = await User.findOne({ email: "member.demo@ecoxchange.app" });
   const recycler = await Recycler.findOne({ email: "recycler.demo@ecoxchange.app" });
   const admin = await Admin.findOne({ email: "admin.demo@ecoxchange.app" });
 
+  // Clear and re-seed wallets and ledger
   await Wallet.deleteMany({});
   await LedgerEntry.deleteMany({});
 
@@ -128,6 +138,7 @@ async function run() {
       ecoPointsBalance: trial.ecoPoints || 200,
     });
   }
+
   if (member) {
     await Wallet.create({
       ownerId: member._id,
@@ -149,6 +160,7 @@ async function run() {
       description: "Demo marketplace credit (net)",
     });
   }
+
   if (recycler) {
     await Wallet.create({
       ownerId: recycler._id,
@@ -158,6 +170,7 @@ async function run() {
       lifetimeEarnings: 200000,
     });
   }
+
   if (admin) {
     await Wallet.create({
       ownerId: admin._id,
@@ -196,7 +209,7 @@ async function run() {
         totalMaterialWeight: 1.5,
         sustainabilityScore: 95,
         carbonSavedKg: 2.4,
-        images: ["https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?auto=format&fit=crop&q=80&w=400"]
+        images: ["https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?auto=format&fit=crop&q=80&w=400"],
       },
       {
         recycler: recycler._id,
@@ -213,7 +226,7 @@ async function run() {
         totalMaterialWeight: 0.3,
         sustainabilityScore: 92,
         carbonSavedKg: 0.5,
-        images: ["https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&q=80&w=400"]
+        images: ["https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&q=80&w=400"],
       },
       {
         recycler: recycler._id,
@@ -230,13 +243,38 @@ async function run() {
         totalMaterialWeight: 0.5,
         sustainabilityScore: 98,
         carbonSavedKg: 1.8,
-        images: ["https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&q=80&w=400"]
-      }
+        images: ["https://images.unsplash.com/photo-1600857544200-b2f666a9a2ec?auto=format&fit=crop&q=80&w=400"],
+      },
+      {
+        recycler: recycler._id,
+        name: "Upcycled Glass Terrarium",
+        description: "Hand-crafted terrarium from upcycled glass bottles. Perfect for succulents and air plants.",
+        category: "Home & Living",
+        price: 649,
+        stock: 60,
+        isActive: true,
+        status: "active",
+        isApprovedByAdmin: true,
+        manufactureDate: new Date(),
+        materialsUsed: [{ materialType: "glass", quantityKg: 0.8 }],
+        totalMaterialWeight: 0.8,
+        sustainabilityScore: 97,
+        carbonSavedKg: 1.2,
+        images: ["https://images.unsplash.com/photo-1585314062340-f1a5a7c9328d?auto=format&fit=crop&q=80&w=400"],
+      },
     ]);
   }
 
   // eslint-disable-next-line no-console
-  console.log("Seed complete. Demo phones +919000000001–006 password:", PASS);
+  console.log("✅ Seed complete.");
+  console.log("Demo accounts (password: Password123!):");
+  console.log("  trial.demo@ecoxchange.app       (+919000000001) → citizen/trial");
+  console.log("  member.demo@ecoxchange.app      (+919000000002) → citizen/member");
+  console.log("  supervisor.demo@ecoxchange.app  (+919000000003) → supervisor");
+  console.log("  delivery.demo@ecoxchange.app    (+919000000004) → delivery_agent");
+  console.log("  recycler.demo@ecoxchange.app    (+919000000005) → recycler");
+  console.log("  admin.demo@ecoxchange.app       (+919000000006) → admin");
+
   await mongoose.disconnect();
 }
 

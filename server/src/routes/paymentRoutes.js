@@ -1,5 +1,6 @@
 const express = require("express");
-const { verifyPayment } = require("../services/paymentService");
+const crypto = require("crypto");
+const { verifyPayment, createRazorpayOrder } = require("../services/paymentService");
 const { Order } = require("../models/Order");
 const { Product } = require("../models/Product");
 const { AuditLog } = require("../models/AuditLog");
@@ -8,20 +9,61 @@ const { protect } = require("../middleware/guards");
 
 const router = express.Router();
 
+/**
+ * POST /api/payments/create-order
+ * Create a Razorpay order for marketplace checkout (alias for /api/orders/checkout)
+ */
+router.post("/create-order", protect, async (req, res, next) => {
+  try {
+    const { amount, currency = "INR", receipt } = req.body || {};
+    if (!amount || isNaN(Number(amount))) {
+      return res.status(400).json({ success: false, message: "Valid amount is required" });
+    }
+
+    const rzpOrder = await createRazorpayOrder(
+      Number(amount),
+      receipt || `rcpt_${req.user._id}_${Date.now()}`
+    );
+
+    if (!rzpOrder) {
+      // Demo fallback when Razorpay is not configured
+      return res.status(200).json({
+        success: true,
+        message: "Demo order created",
+        data: {
+          razorpayOrderId: `demo_order_${Date.now()}`,
+          amount: Math.round(Number(amount) * 100),
+          currency: "INR",
+        },
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Razorpay order created",
+      data: {
+        razorpayOrderId: rzpOrder.id,
+        amount: rzpOrder.amount,
+        currency: rzpOrder.currency,
+      },
+    });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+/**
+ * POST /api/payments/webhook
+ * Razorpay webhook — verifies payment and marks order paid
+ */
 router.post("/webhook", async (req, res) => {
   try {
     const signature = req.headers["x-razorpay-signature"];
     const body = req.body;
-
-    // Razorpay webhook validation logic here
-    // For this implementation, we will use a simpler verification flow 
-    // expected by standard razorpay callback.
-
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = body;
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = body || {};
 
     if (razorpay_order_id && razorpay_payment_id && razorpay_signature) {
       const isValid = await verifyPayment(razorpay_signature, razorpay_order_id, razorpay_payment_id);
-      
       if (!isValid) {
         return res.status(400).json({ success: false, message: "Invalid signature" });
       }
@@ -31,25 +73,26 @@ router.post("/webhook", async (req, res) => {
         return res.status(404).json({ success: false, message: "Order not found" });
       }
 
-      order.paymentStatus = "paid";
-      order.razorpayPaymentId = razorpay_payment_id;
-      await order.save();
+      if (order.paymentStatus !== "paid") {
+        order.paymentStatus = "paid";
+        order.razorpayPaymentId = razorpay_payment_id;
+        await order.save();
 
-      // Reduce stock now that payment is confirmed
-      for (const item of order.items) {
-        const product = await Product.findById(item.product);
-        if (product) {
-          product.stock = Math.max(0, product.stock - item.quantity);
-          if (product.stock === 0) product.status = "out_of_stock";
-          await product.save();
+        for (const item of order.items) {
+          const product = await Product.findById(item.product);
+          if (product) {
+            product.stock = Math.max(0, product.stock - item.quantity);
+            if (product.stock === 0) product.status = "out_of_stock";
+            await product.save();
+          }
         }
-      }
 
-      await AuditLog.create({
-        action: "payment_webhook_success",
-        user: order.user,
-        details: { orderId: order._id, razorpay_payment_id }
-      });
+        await AuditLog.create({
+          action: "payment_webhook_success",
+          user: order.user,
+          details: { orderId: order._id, razorpay_payment_id },
+        });
+      }
 
       return res.status(200).json({ success: true, message: "Payment verified successfully" });
     }
@@ -61,6 +104,10 @@ router.post("/webhook", async (req, res) => {
   }
 });
 
+/**
+ * POST /api/payments/verify
+ * Client-side payment verification after Razorpay checkout
+ */
 router.post("/verify", protect, async (req, res, next) => {
   try {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body || {};
@@ -71,7 +118,7 @@ router.post("/verify", protect, async (req, res, next) => {
 
     const isValid = await verifyPayment(razorpay_signature, razorpay_order_id, razorpay_payment_id);
     if (!isValid) {
-      return res.status(400).json({ success: false, message: "Invalid signature" });
+      return res.status(400).json({ success: false, message: "Invalid payment signature" });
     }
 
     const order = await Order.findOne({ razorpayOrderId: razorpay_order_id });
@@ -100,14 +147,14 @@ router.post("/verify", protect, async (req, res, next) => {
       await AuditLog.create({
         action: "payment_verify_success",
         user: req.user._id,
-        details: { orderId: order._id, razorpay_payment_id }
+        details: { orderId: order._id, razorpay_payment_id },
       });
     }
 
     return res.status(200).json({
       success: true,
       message: "Payment verified and order processed successfully",
-      data: order
+      data: order,
     });
   } catch (err) {
     return next(err);

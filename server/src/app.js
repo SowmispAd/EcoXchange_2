@@ -1,6 +1,7 @@
 const express = require("express");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
+const mongoSanitize = require("express-mongo-sanitize");
 let compression;
 try {
   compression = require("compression");
@@ -57,6 +58,7 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(helmet());
+app.use(mongoSanitize());
 if (typeof compression === "function") {
   app.use(compression());
 }

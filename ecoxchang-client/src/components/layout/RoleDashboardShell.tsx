@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { getDashboardTitle, type AppRole } from "@/config/role-nav";
 
 export function RoleDashboardShell({
-  role,
   children,
 }: {
   role: AppRole;
