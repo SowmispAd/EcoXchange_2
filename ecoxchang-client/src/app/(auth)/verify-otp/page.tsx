@@ -15,10 +15,11 @@ import { api } from "@/lib/api";
 import { mapApiUserToStore } from "@/lib/map-api-user";
 import { auth } from "@/lib/firebase";
 import { RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth";
+import { normalizePhoneNumber } from "@/lib/phone";
 
 export default function VerifyOtpPage() {
   const router = useRouter();
-  const { pendingPhone, setSession, setIsNewUser } = useAuthStore();
+  const { pendingPhone, setSession, setIsNewUser, otpMode, setOtpMode } = useAuthStore();
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
   const [cooldown, setCooldown] = useState(60);
@@ -39,9 +40,8 @@ export default function VerifyOtpPage() {
   const setupRecaptcha = () => {
     if (typeof window === "undefined") return;
     if ((window as any).recaptchaVerifier) {
-      try {
-        (window as any).recaptchaVerifier.clear();
-      } catch (e) {}
+      console.log("Reusing existing RecaptchaVerifier");
+      return;
     }
     
     (window as any).recaptchaVerifier = new RecaptchaVerifier(
@@ -57,32 +57,54 @@ export default function VerifyOtpPage() {
         }
       }
     );
+    console.log("Recaptcha initialized");
   };
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
+      const currentOtpMode = (window as any).otpMode || otpMode;
       const confirmationResult = (window as any).confirmationResult;
-      if (!confirmationResult) {
-        toast.error("Verification session expired. Please request a new OTP.");
-        router.push("/login");
-        return;
-      }
 
-      const result = await confirmationResult.confirm(otp);
-      const firebaseUser = result.user;
-      const idToken = await firebaseUser.getIdToken();
+      if (currentOtpMode === "backend" || !confirmationResult) {
+        // Backend OTP verification mode
+        console.log("Verifying OTP via backend for:", pendingPhone);
+        const res = await api.post("/auth/verify-otp", {
+          phoneNumber: pendingPhone,
+          otp,
+        });
 
-      const res = await api.post("/auth/firebase", { idToken });
+        if (res.data?.success) {
+          if (res.data.isNewUser) {
+            toast.success("Phone verified. Please complete your registration!");
+            setIsNewUser(true);
+            router.push("/register");
+          } else {
+            toast.success("OTP Verified!");
+            const { token, data: user, modelName } = res.data;
+            const mappedUser = mapApiUserToStore(user);
+            setSession({ token, user: mappedUser, backendModel: modelName });
+            router.push(defaultHomeForRole(mappedUser.role));
+          }
+        }
+      } else {
+        // Firebase OTP verification mode
+        console.log("Verifying OTP via Firebase");
+        const result = await confirmationResult.confirm(otp);
+        const firebaseUser = result.user;
+        const idToken = await firebaseUser.getIdToken();
 
-      if (res.data?.success) {
-        toast.success("OTP Verified!");
-        const { token, data } = res.data;
-        const { user: backendUser, modelName } = data;
-        const mappedUser = mapApiUserToStore(backendUser, modelName);
-        setSession({ token, user: mappedUser, backendModel: modelName });
-        router.push(defaultHomeForRole(mappedUser.role));
+        const res = await api.post("/auth/firebase", { idToken });
+
+        if (res.data?.success) {
+          toast.success("OTP Verified!");
+          const { token, data } = res.data;
+          const { user: backendUser, modelName } = data;
+          const mappedUser = mapApiUserToStore(backendUser);
+          setSession({ token, user: mappedUser, backendModel: modelName });
+          router.push(defaultHomeForRole(mappedUser.role));
+        }
       }
     } catch (err: any) {
       console.error("OTP verification error:", err);
@@ -101,20 +123,51 @@ export default function VerifyOtpPage() {
   const handleResend = async () => {
     if (!pendingPhone) return;
     try {
-      setupRecaptcha();
-      const appVerifier = (window as any).recaptchaVerifier;
-      if (!appVerifier) {
-        throw new Error("reCAPTCHA verifier is not initialized");
+      const normalizedPhone = normalizePhoneNumber(pendingPhone);
+      const currentOtpMode = (window as any).otpMode || otpMode;
+
+      if (currentOtpMode === "backend") {
+        // Resend via backend
+        const res = await api.post("/auth/send-otp", { phoneNumber: normalizedPhone });
+        if (res.data?.success) {
+          toast.success("New OTP sent!");
+          setCooldown(60);
+        }
+      } else {
+        // Resend via Firebase
+        setupRecaptcha();
+        const appVerifier = (window as any).recaptchaVerifier;
+        if (!appVerifier) {
+          throw new Error("reCAPTCHA verifier is not initialized");
+        }
+
+        try {
+          const confirmationResult = await signInWithPhoneNumber(auth, normalizedPhone, appVerifier);
+          (window as any).confirmationResult = confirmationResult;
+          toast.success("New OTP sent!");
+          setCooldown(60);
+        } catch (firebaseErr: any) {
+          if (
+            firebaseErr.code === "auth/billing-not-enabled" ||
+            firebaseErr.message?.includes("billing-not-enabled")
+          ) {
+            // Fall back to backend
+            const res = await api.post("/auth/send-otp", { phoneNumber: normalizedPhone });
+            if (res.data?.success) {
+              (window as any).confirmationResult = null;
+              (window as any).otpMode = "backend";
+              setOtpMode("backend");
+              toast.success("New OTP sent!");
+              setCooldown(60);
+            }
+          } else {
+            throw firebaseErr;
+          }
+        }
       }
-
-      const confirmationResult = await signInWithPhoneNumber(auth, pendingPhone, appVerifier);
-      (window as any).confirmationResult = confirmationResult;
-
-      toast.success("New OTP sent!");
-      setCooldown(60);
     } catch (err: any) {
-      console.error("Firebase Resend Error:", err);
-      toast.error(err.message || "Failed to resend OTP");
+      console.error("OTP Resend Error:", err);
+      toast.error(err.response?.data?.message || err.message || "Failed to resend OTP");
     }
   };
 

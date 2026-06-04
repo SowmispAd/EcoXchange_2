@@ -45,7 +45,7 @@ export default function RegisterPage() {
 
       if (res.data?.success) {
         const { token, data: user, modelName } = res.data;
-        const mappedUser = mapApiUserToStore(user, modelName);
+        const mappedUser = mapApiUserToStore(user);
         setSession({ token, user: mappedUser, backendModel: modelName });
         toast.success("Account created successfully!");
         router.push(defaultHomeForRole(mappedUser.role));
