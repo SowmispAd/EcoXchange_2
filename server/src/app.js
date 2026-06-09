@@ -31,6 +31,9 @@ const { marketplaceRoutes } = require("./routes/marketplaceRoutes");
 const { walletRouter } = require("./routes/walletRoutes");
 const { wasteRouter } = require("./routes/wasteRoutes");
 const { aiRouter } = require("./routes/aiRoutes");
+const { scheduleRouter } = require("./routes/scheduleRoutes");
+const { shipmentRoutes } = require("./routes/shipmentRoutes");
+const { revenueRoutes } = require("./routes/revenueRoutes");
 const { errorMiddleware } = require("./middleware/errorMiddleware");
 
 const app = express();
@@ -70,6 +73,18 @@ const limiter = rateLimit({
 
 app.use(limiter);
 
+// Specific security rate limiter for chatbot, checkout and shipment confirmations
+const strictLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 100,
+  message: { success: false, message: "Too many requests, please try again later." }
+});
+
+app.use("/api/ai/chat", strictLimiter);
+app.use("/api/payments/create-order", strictLimiter);
+app.use("/api/payments/verify", strictLimiter);
+app.use("/api/shipments/:id/confirm-receipt", strictLimiter);
+
 // Routes
 app.use(healthRouter);
 
@@ -88,6 +103,9 @@ app.use("/api/rewards", rewardRoutes);
 app.use("/api/membership", membershipRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/recycler", recycleRoutes);
+app.use("/api/recycler/schedules", scheduleRouter);
+app.use("/api/shipments", shipmentRoutes);
+app.use("/api/revenue", revenueRoutes);
 app.use("/api/marketplace", marketplaceRoutes);
 app.use("/api/wallet", walletRouter);
 app.use("/api/waste", wasteRouter);
@@ -115,3 +133,4 @@ app.use((req, res) => {
 app.use(errorMiddleware);
 
 module.exports = { app };
+

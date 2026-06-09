@@ -30,6 +30,18 @@ const notificationSchema = new mongoose.Schema(
         "payment_success",
         "payment_failed",
         "system_alert",
+        "schedule_created",
+        "schedule_updated",
+        "schedule_paused",
+        "schedule_resumed",
+        "schedule_deleted",
+        "shipment_assigned",
+        "shipment_accepted",
+        "shipment_delivered",
+        "receipt_confirmed",
+        "shipment_completed",
+        "payment_initiated",
+        "payout_released",
       ],
     },
 
@@ -37,8 +49,11 @@ const notificationSchema = new mongoose.Schema(
 
     metadata: { type: mongoose.Schema.Types.Mixed, default: {} },
   },
-  { timestamps: true },
+  { timestamps: true }
 );
+
+notificationSchema.index({ recipient: 1 });
+notificationSchema.index({ isRead: 1 });
 
 const Notification = mongoose.model("Notification", notificationSchema);
 
