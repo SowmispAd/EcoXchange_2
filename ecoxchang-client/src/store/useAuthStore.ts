@@ -25,11 +25,13 @@ interface AuthState {
   isAuthenticated: boolean;
   pendingPhone: string | null;
   isNewUser: boolean;
+  otpMode: "firebase" | "backend" | null;
   login: (userData: User) => void;
   setSession: (args: { token: string; user: User; backendModel?: string | null }) => void;
   logout: () => void;
   setPendingPhone: (phone: string | null) => void;
   setIsNewUser: (v: boolean) => void;
+  setOtpMode: (mode: "firebase" | "backend" | null) => void;
   updateUser: (patch: Partial<User>) => void;
 }
 
@@ -42,13 +44,16 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       pendingPhone: null,
       isNewUser: false,
+      otpMode: null,
       login: (userData) =>
         set({
           user: userData,
           isAuthenticated: true,
           pendingPhone: null,
+          isNewUser: false,
           token: null,
           backendModel: null,
+          otpMode: null,
         }),
       setSession: ({ token, user, backendModel }) =>
         set({
@@ -57,6 +62,8 @@ export const useAuthStore = create<AuthState>()(
           backendModel: backendModel ?? null,
           isAuthenticated: true,
           pendingPhone: null,
+          isNewUser: false,
+          otpMode: null,
         }),
       logout: () =>
         set({
@@ -66,9 +73,11 @@ export const useAuthStore = create<AuthState>()(
           isAuthenticated: false,
           pendingPhone: null,
           isNewUser: false,
+          otpMode: null,
         }),
       setPendingPhone: (phone) => set({ pendingPhone: phone }),
       setIsNewUser: (v) => set({ isNewUser: v }),
+      setOtpMode: (mode) => set({ otpMode: mode }),
       updateUser: (patch) =>
         set((s) => (s.user ? { user: { ...s.user, ...patch } } : {})),
     }),
@@ -79,6 +88,9 @@ export const useAuthStore = create<AuthState>()(
         token: s.token,
         backendModel: s.backendModel,
         isAuthenticated: s.isAuthenticated,
+        pendingPhone: s.pendingPhone,
+        isNewUser: s.isNewUser,
+        otpMode: s.otpMode,
       }),
     },
   ),

@@ -76,6 +76,7 @@ export const NAV_BY_ROLE: Record<AppRole, NavItem[]> = {
   ],
   recycler: [
     { name: "Dashboard", href: "/recycler/dashboard", icon: LayoutDashboard },
+    { name: "Schedule", href: "/recycler/schedules", icon: Calendar },
     { name: "Shipments", href: "/recycler/shipments", icon: Truck },
     { name: "Revenue", href: "/recycler/revenue", icon: IndianRupee },
     { name: "Payments", href: "/recycler/payments", icon: CreditCard },

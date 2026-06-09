@@ -15,10 +15,11 @@ import { api } from "@/lib/api";
 import { mapApiUserToStore } from "@/lib/map-api-user";
 import { auth } from "@/lib/firebase";
 import { RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth";
+import { normalizePhoneNumber } from "@/lib/phone";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { setSession, setPendingPhone } = useAuthStore();
+  const { setSession, setPendingPhone, setOtpMode } = useAuthStore();
   const [loginMode, setLoginMode] = useState<"password" | "otp">("password");
   
   // Email/Password states
@@ -33,9 +34,8 @@ export default function LoginPage() {
   const setupRecaptcha = () => {
     if (typeof window === "undefined") return;
     if ((window as any).recaptchaVerifier) {
-      try {
-        (window as any).recaptchaVerifier.clear();
-      } catch (e) {}
+      console.log("Reusing existing RecaptchaVerifier");
+      return;
     }
     
     (window as any).recaptchaVerifier = new RecaptchaVerifier(
@@ -51,6 +51,7 @@ export default function LoginPage() {
         }
       }
     );
+    console.log("Recaptcha initialized");
   };
 
   const handlePasswordLogin = async (e: React.FormEvent) => {
@@ -60,7 +61,7 @@ export default function LoginPage() {
       const res = await api.post("/auth/login", { email, password });
       if (res.data?.success) {
         const { token, data: user, modelName } = res.data;
-        const mappedUser = mapApiUserToStore(user, modelName);
+        const mappedUser = mapApiUserToStore(user);
         setSession({ token, user: mappedUser, backendModel: modelName });
         toast.success("Login successful!");
         router.push(defaultHomeForRole(mappedUser.role));
@@ -70,27 +71,61 @@ export default function LoginPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleSendOtp = async (e: React.FormEvent) => {
+  };  const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      setupRecaptcha();
-      const appVerifier = (window as any).recaptchaVerifier;
-      if (!appVerifier) {
-        throw new Error("reCAPTCHA verifier is not initialized");
+      // Validate and normalize input
+      const normalizedPhone = normalizePhoneNumber(phoneNumber);
+
+      console.log("Raw phone:", phoneNumber);
+      console.log("Normalized phone:", normalizedPhone);
+
+      // Try Firebase phone auth first
+      let firebaseSuccess = false;
+      let finalOtpMode: "firebase" | "backend" = "firebase";
+      try {
+        setupRecaptcha();
+        const appVerifier = (window as any).recaptchaVerifier;
+        if (!appVerifier) {
+          throw new Error("reCAPTCHA verifier is not initialized");
+        }
+
+        console.log("Firebase Auth Initialized:", !!auth);
+        console.log("Recaptcha Exists:", !!(window as any).recaptchaVerifier);
+
+        const confirmationResult = await signInWithPhoneNumber(auth, normalizedPhone, appVerifier);
+        (window as any).confirmationResult = confirmationResult;
+        (window as any).otpMode = "firebase";
+        finalOtpMode = "firebase";
+        firebaseSuccess = true;
+      } catch (firebaseErr: any) {
+        console.warn("Firebase phone auth failed, falling back to backend OTP:", firebaseErr.code || firebaseErr.message);
+
+        // Fall back to backend OTP system for any Firebase error in non-prod/testing
+        try {
+          const res = await api.post("/auth/send-otp", { phoneNumber: normalizedPhone });
+          if (res.data?.success) {
+            (window as any).confirmationResult = null;
+            (window as any).otpMode = "backend";
+            finalOtpMode = "backend";
+            firebaseSuccess = true;
+          }
+        } catch (backendErr: any) {
+          console.error("Backend OTP fallback failed:", backendErr);
+          throw firebaseErr; // Throw the original Firebase error if fallback also fails
+        }
       }
 
-      const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
-      (window as any).confirmationResult = confirmationResult;
-
-      setPendingPhone(phoneNumber);
-      toast.success("OTP sent to your phone!");
-      router.push("/verify-otp");
+      if (firebaseSuccess) {
+        setPendingPhone(normalizedPhone);
+        setOtpMode(finalOtpMode);
+        toast.success("OTP sent successfully!");
+        router.push("/verify-otp");
+      }
     } catch (err: any) {
-      console.error("Firebase Auth Error:", err);
-      toast.error(err.message || "Failed to send OTP via Firebase");
+      console.error("OTP Send Error:", err);
+      toast.error(err.response?.data?.message || err.message || "Failed to send OTP");
     } finally {
       setLoading(false);
     }

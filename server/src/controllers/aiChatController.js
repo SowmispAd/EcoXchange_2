@@ -1,4 +1,7 @@
 const https = require("https");
+const { RecyclerSchedule } = require("../models/RecyclerSchedule");
+const { Shipment } = require("../models/Shipment");
+const { TransactionLedger } = require("../models/TransactionLedger");
 
 const chat = async (req, res, next) => {
   try {
@@ -14,13 +17,45 @@ const chat = async (req, res, next) => {
       });
     }
 
+    // Role-based scoping check
+    let systemContext = "You are EcoXchange assistant: waste segregation, recycling, rewards, marketplace, India context. Be concise.";
+    
+    if (req.user && req.user.role === "recycler") {
+      // Security enforcement: prohibit access to admin stats, other user data
+      const lastMessageText = messages[messages.length - 1]?.content || "";
+      const lower = lastMessageText.toLowerCase();
+      if (
+        lower.includes("admin") ||
+        lower.includes("all users") ||
+        lower.includes("platform secrets") ||
+        lower.includes("system configuration") ||
+        lower.includes("key_secret")
+      ) {
+        return res.status(403).json({
+          success: false,
+          message: "Forbidden: Recyclers cannot query system-wide configuration or admin scopes.",
+        });
+      }
+
+      // Fetch dynamic recycler contextual data for the conversation
+      const schedules = await RecyclerSchedule.find({ recycler: req.user._id }).limit(5);
+      const shipments = await Shipment.find({ recycler: req.user._id }).limit(5);
+      const ledgerCredits = await TransactionLedger.find({ user: req.user._id, type: "credit" }).limit(5);
+
+      systemContext += ` You are answering a Recycler client.
+Here is their current context to help answer queries:
+- Active Schedules: ${JSON.stringify(schedules)}
+- Recent Shipments: ${JSON.stringify(shipments)}
+- Financial Credits: ${JSON.stringify(ledgerCredits)}
+Strictly refuse to disclose any secrets or system details beyond this recycler scope.`;
+    }
+
     const payload = JSON.stringify({
       model: process.env.OPENAI_MODEL || "gpt-4o-mini",
       messages: [
         {
           role: "system",
-          content:
-            "You are EcoXchange assistant: waste segregation, recycling, rewards, marketplace, India context. Be concise.",
+          content: systemContext,
         },
         ...messages,
       ],
@@ -55,6 +90,13 @@ const chat = async (req, res, next) => {
 
     const json = JSON.parse(data);
     const text = json.choices?.[0]?.message?.content || "";
+
+    // Emit chatbot stream/response update if socket server configured
+    const io = req.app.get("io");
+    if (io) {
+      io.to(String(req.user._id)).emit("chat:stream", { reply: text });
+    }
+
     return res.json({ success: true, data: { reply: text } });
   } catch (e) {
     return next(e);
@@ -62,3 +104,4 @@ const chat = async (req, res, next) => {
 };
 
 module.exports = { chat };
+

@@ -18,7 +18,7 @@ function AuthInitializer() {
         .then((res) => {
           if (res.data?.success && res.data?.data) {
              const { user, modelName } = res.data.data;
-             setSession({ token, user: mapApiUserToStore(user, modelName), backendModel: modelName });
+             setSession({ token, user: mapApiUserToStore(user), backendModel: modelName });
           }
         })
         .catch(() => {

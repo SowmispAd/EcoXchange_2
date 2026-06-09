@@ -169,6 +169,90 @@ async function run() {
       pendingBalance: 0,
       lifetimeEarnings: 200000,
     });
+
+    // Seed Recycler Schedules
+    const { RecyclerSchedule } = require("../models/RecyclerSchedule");
+    await RecyclerSchedule.deleteMany({ recycler: recycler._id });
+    await RecyclerSchedule.create([
+      {
+        recycler: recycler._id,
+        date: new Date(Date.now() + 86400000), // tomorrow
+        startTime: "09:00",
+        endTime: "12:00",
+        zone: "Zone-A",
+        maxCapacity: 1000,
+        bookedCapacity: 250,
+        acceptedWasteCategories: ["plastic", "paper"],
+        specialInstructions: "Use Gate 2 for heavy weight drops",
+        recurrence: "none",
+        status: "active",
+      },
+      {
+        recycler: recycler._id,
+        date: new Date(Date.now() + 172800000), // day after tomorrow
+        startTime: "13:00",
+        endTime: "16:00",
+        zone: "Zone-B",
+        maxCapacity: 500,
+        bookedCapacity: 0,
+        acceptedWasteCategories: ["ewaste", "metal"],
+        specialInstructions: "Wear security vest",
+        recurrence: "weekly",
+        status: "active",
+      },
+    ]);
+
+    // Seed Recycler Shipments
+    const { Shipment } = require("../models/Shipment");
+    await Shipment.deleteMany({ recycler: recycler._id });
+    const s1 = await Shipment.create({
+      recycler: recycler._id,
+      fromHub: "North Hub",
+      wasteType: "plastic",
+      weightKg: 450,
+      status: "Delivered",
+      shipmentHistory: [
+        { status: "Assigned", changedBy: recycler._id, remarks: "Seed assigned" },
+        { status: "Delivered", changedBy: recycler._id, remarks: "Seed delivered" },
+      ],
+    });
+
+    await Shipment.create({
+      recycler: recycler._id,
+      fromHub: "South Hub",
+      wasteType: "metal",
+      weightKg: 200,
+      status: "Receipt Confirmed",
+      shipmentHistory: [
+        { status: "Assigned", changedBy: recycler._id, remarks: "Seed assigned" },
+        { status: "Delivered", changedBy: recycler._id, remarks: "Seed delivered" },
+        { status: "Receipt Confirmed", changedBy: recycler._id, remarks: "Seed receipt confirmed" },
+      ],
+    });
+
+    // Seed Ledger Entries
+    const { TransactionLedger } = require("../models/TransactionLedger");
+    await TransactionLedger.deleteMany({ user: recycler._id });
+    await TransactionLedger.create([
+      {
+        type: "credit",
+        amount: 4500,
+        source: "plastic",
+        referenceId: s1._id,
+        referenceType: "Shipment",
+        user: recycler._id,
+        timestamp: new Date(),
+      },
+      {
+        type: "credit",
+        amount: 8000,
+        source: "metal",
+        referenceId: s1._id,
+        referenceType: "Shipment",
+        user: recycler._id,
+        timestamp: new Date(Date.now() - 86400000 * 2),
+      },
+    ]);
   }
 
   if (admin) {

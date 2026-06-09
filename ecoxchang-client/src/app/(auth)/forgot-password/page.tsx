@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 import { api } from "@/lib/api";
+import { normalizePhoneNumber } from "@/lib/phone";
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
@@ -25,13 +26,14 @@ export default function ForgotPasswordPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await api.post("/auth/forgot-password", { phoneNumber });
+      const normalizedPhone = normalizePhoneNumber(phoneNumber);
+      const res = await api.post("/auth/forgot-password", { phoneNumber: normalizedPhone });
       if (res.data?.success) {
         toast.success("Reset OTP sent to your phone number!");
         setStep("reset");
       }
     } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to request OTP code");
+      toast.error(err.response?.data?.message || err.message || "Failed to request OTP code");
     } finally {
       setLoading(false);
     }
@@ -41,13 +43,14 @@ export default function ForgotPasswordPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await api.post("/auth/reset-password", { phoneNumber, otp, newPassword });
+      const normalizedPhone = normalizePhoneNumber(phoneNumber);
+      const res = await api.post("/auth/reset-password", { phoneNumber: normalizedPhone, otp, newPassword });
       if (res.data?.success) {
         toast.success("Password reset successfully! Please sign in.");
         router.push("/login");
       }
     } catch (err: any) {
-      toast.error(err.response?.data?.message || "Password reset failed");
+      toast.error(err.response?.data?.message || err.message || "Password reset failed");
     } finally {
       setLoading(false);
     }

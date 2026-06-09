@@ -64,7 +64,6 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
               className="fixed inset-y-0 left-0 w-64 bg-background z-50 md:hidden"
             >
               <RoleBasedSidebar
-                mobileMenuOpen={mobileMenuOpen}
                 setMobileMenuOpen={setMobileMenuOpen}
               />
             </motion.div>

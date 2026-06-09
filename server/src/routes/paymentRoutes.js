@@ -6,6 +6,9 @@ const { Product } = require("../models/Product");
 const { AuditLog } = require("../models/AuditLog");
 const { Cart } = require("../models/Cart");
 const { protect } = require("../middleware/guards");
+const { ProcessedWebhook } = require("../models/ProcessedWebhook");
+const { TransactionLedger } = require("../models/TransactionLedger");
+const { createNotification } = require("../services/notificationService");
 
 const router = express.Router();
 
@@ -54,13 +57,22 @@ router.post("/create-order", protect, async (req, res, next) => {
 
 /**
  * POST /api/payments/webhook
- * Razorpay webhook — verifies payment and marks order paid
+ * Razorpay webhook — verifies payment and marks order paid with webhook idempotency logic.
  */
 router.post("/webhook", async (req, res) => {
   try {
     const signature = req.headers["x-razorpay-signature"];
     const body = req.body;
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = body || {};
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, event_id } = body || {};
+
+    // Check webhook event idempotency
+    if (event_id) {
+      const alreadyProcessed = await ProcessedWebhook.findOne({ eventId: event_id });
+      if (alreadyProcessed) {
+        return res.status(200).json({ success: true, message: "Webhook event already processed" });
+      }
+      await ProcessedWebhook.create({ eventId: event_id });
+    }
 
     if (razorpay_order_id && razorpay_payment_id && razorpay_signature) {
       const isValid = await verifyPayment(razorpay_signature, razorpay_order_id, razorpay_payment_id);
@@ -85,6 +97,32 @@ router.post("/webhook", async (req, res) => {
             if (product.stock === 0) product.status = "out_of_stock";
             await product.save();
           }
+        }
+
+        // Create transaction ledger entries
+        await TransactionLedger.create({
+          type: "debit",
+          amount: order.totalAmount,
+          source: "Marketplace Purchase",
+          referenceId: order._id,
+          referenceType: "Order",
+          user: order.user,
+        });
+
+        // Trigger dynamic socket.io updates and web notification
+        const io = req.app.get("io");
+        const notif = await createNotification({
+          recipient: order.user,
+          recipientModel: "User",
+          title: "Payment Successful",
+          message: `Your payment of ₹${order.totalAmount} for Order ${order._id} was successfully processed.`,
+          type: "payment_success",
+          metadata: { orderId: order._id, paymentId: razorpay_payment_id },
+        });
+
+        if (io) {
+          io.to(String(order.user)).emit("notification:new", notif);
+          io.to(String(order.user)).emit("payment:success", { orderId: order._id });
         }
 
         await AuditLog.create({
@@ -144,6 +182,33 @@ router.post("/verify", protect, async (req, res, next) => {
       // Clear user cart
       await Cart.findOneAndUpdate({ user: req.user._id }, { items: [] });
 
+      // Create ledger entry
+      await TransactionLedger.create({
+        type: "debit",
+        amount: order.totalAmount,
+        source: "Marketplace Purchase",
+        referenceId: order._id,
+        referenceType: "Order",
+        user: req.user._id,
+      });
+
+      // Emit notifications
+      const io = req.app.get("io");
+      const notif = await createNotification({
+        recipient: req.user._id,
+        recipientModel: req.user.constructor.modelName,
+        title: "Payment Successful",
+        message: `Your payment of ₹${order.totalAmount} for Order ${order._id} was successfully processed.`,
+        type: "payment_success",
+        metadata: { orderId: order._id, paymentId: razorpay_payment_id },
+      });
+
+      if (io) {
+        io.to(String(req.user._id)).emit("notification:new", notif);
+        io.to(String(req.user._id)).emit("payment:success", { orderId: order._id });
+        io.to(String(req.user._id)).emit("revenue:updated");
+      }
+
       await AuditLog.create({
         action: "payment_verify_success",
         user: req.user._id,
@@ -162,3 +227,4 @@ router.post("/verify", protect, async (req, res, next) => {
 });
 
 module.exports = { paymentRoutes: router };
+

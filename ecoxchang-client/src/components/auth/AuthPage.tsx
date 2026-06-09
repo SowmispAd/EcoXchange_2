@@ -67,7 +67,7 @@ export default function AuthPage({ role, type }: AuthPageProps) {
         });
         if (res.data?.success) {
           const { token, data: user, modelName } = res.data;
-          setSession({ token, user: mapApiUserToStore(user, modelName), backendModel: modelName });
+          setSession({ token, user: mapApiUserToStore(user), backendModel: modelName });
           toast.success("Account created successfully");
           router.push(defaultHomeForRole(toAppRole(String(user.role || role))));
         }
@@ -78,7 +78,7 @@ export default function AuthPage({ role, type }: AuthPageProps) {
         });
         if (res.data?.success) {
           const { token, data: user, modelName } = res.data;
-          setSession({ token, user: mapApiUserToStore(user, modelName), backendModel: modelName });
+          setSession({ token, user: mapApiUserToStore(user), backendModel: modelName });
           toast.success("Logged in successfully");
           router.push(defaultHomeForRole(toAppRole(String(user.role || role))));
         }
