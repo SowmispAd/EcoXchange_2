@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Leaf, ShieldCheck, ArrowRight } from "lucide-react";
+import { Leaf } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +16,7 @@ import { mapApiUserToStore } from "@/lib/map-api-user";
 import { auth } from "@/lib/firebase";
 import { RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth";
 import { normalizePhoneNumber } from "@/lib/phone";
+import type { ApiError } from "@/types/api";
 
 export default function VerifyOtpPage() {
   const router = useRouter();
@@ -39,12 +40,12 @@ export default function VerifyOtpPage() {
 
   const setupRecaptcha = () => {
     if (typeof window === "undefined") return;
-    if ((window as any).recaptchaVerifier) {
+    if (window.recaptchaVerifier) {
       console.log("Reusing existing RecaptchaVerifier");
       return;
     }
     
-    (window as any).recaptchaVerifier = new RecaptchaVerifier(
+    window.recaptchaVerifier = new RecaptchaVerifier(
       auth,
       "recaptcha-container",
       {
@@ -64,8 +65,8 @@ export default function VerifyOtpPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      const currentOtpMode = (window as any).otpMode || otpMode;
-      const confirmationResult = (window as any).confirmationResult;
+      const currentOtpMode = window.otpMode || otpMode;
+      const confirmationResult = window.confirmationResult;
 
       if (currentOtpMode === "backend" || !confirmationResult) {
         // Backend OTP verification mode
@@ -106,14 +107,15 @@ export default function VerifyOtpPage() {
           router.push(defaultHomeForRole(mappedUser.role));
         }
       }
-    } catch (err: any) {
-      console.error("OTP verification error:", err);
-      if (err.response?.status === 404) {
+    } catch (err) {
+      const apiErr = err as ApiError;
+      console.error("OTP verification error:", apiErr);
+      if (apiErr.response?.status === 404) {
         toast.success("Phone verified. Please complete your registration!");
         setIsNewUser(true);
         router.push("/register");
       } else {
-        toast.error(err.response?.data?.message || err.message || "Invalid OTP code");
+        toast.error(apiErr.response?.data?.message || apiErr.message || "Invalid OTP code");
       }
     } finally {
       setLoading(false);
@@ -124,7 +126,7 @@ export default function VerifyOtpPage() {
     if (!pendingPhone) return;
     try {
       const normalizedPhone = normalizePhoneNumber(pendingPhone);
-      const currentOtpMode = (window as any).otpMode || otpMode;
+      const currentOtpMode = window.otpMode || otpMode;
 
       if (currentOtpMode === "backend") {
         // Resend via backend
@@ -136,26 +138,27 @@ export default function VerifyOtpPage() {
       } else {
         // Resend via Firebase
         setupRecaptcha();
-        const appVerifier = (window as any).recaptchaVerifier;
+        const appVerifier = window.recaptchaVerifier;
         if (!appVerifier) {
           throw new Error("reCAPTCHA verifier is not initialized");
         }
 
         try {
           const confirmationResult = await signInWithPhoneNumber(auth, normalizedPhone, appVerifier);
-          (window as any).confirmationResult = confirmationResult;
+          window.confirmationResult = confirmationResult;
           toast.success("New OTP sent!");
           setCooldown(60);
-        } catch (firebaseErr: any) {
+        } catch (firebaseErr) {
+          const fErr = firebaseErr as ApiError;
           if (
-            firebaseErr.code === "auth/billing-not-enabled" ||
-            firebaseErr.message?.includes("billing-not-enabled")
+            fErr.code === "auth/billing-not-enabled" ||
+            fErr.message?.includes("billing-not-enabled")
           ) {
             // Fall back to backend
             const res = await api.post("/auth/send-otp", { phoneNumber: normalizedPhone });
             if (res.data?.success) {
-              (window as any).confirmationResult = null;
-              (window as any).otpMode = "backend";
+              window.confirmationResult = null;
+              window.otpMode = "backend";
               setOtpMode("backend");
               toast.success("New OTP sent!");
               setCooldown(60);
@@ -165,9 +168,10 @@ export default function VerifyOtpPage() {
           }
         }
       }
-    } catch (err: any) {
-      console.error("OTP Resend Error:", err);
-      toast.error(err.response?.data?.message || err.message || "Failed to resend OTP");
+    } catch (err) {
+      const apiErr = err as ApiError;
+      console.error("OTP Resend Error:", apiErr);
+      toast.error(apiErr.response?.data?.message || apiErr.message || "Failed to resend OTP");
     }
   };
 

@@ -3,7 +3,7 @@
 import { CalendarView } from "@/components/eco/CalendarView";
 import { StatsGrid } from "@/components/eco/StatsGrid";
 import { mockCalendarCollections } from "@/lib/mock/data";
-import { Leaf, Droplets, Package, Sparkles, Recycle } from "lucide-react";
+import { Droplets, Package, Sparkles, Recycle } from "lucide-react";
 
 export default function MemberCalendarPage() {
   return (

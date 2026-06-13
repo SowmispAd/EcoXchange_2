@@ -4,7 +4,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProductCard } from "@/components/eco/ProductCard";
 import { ProductForm } from "@/components/eco/ProductForm";
 import { ApprovalTable } from "@/components/eco/ApprovalTable";
-import { mockProducts, mockPendingApprovals } from "@/lib/mock/data";
+import Image from "next/image";
+import type { MarketplaceProduct } from "@/types/api";
+import { mockPendingApprovals } from "@/lib/mock/data";
 import toast from "react-hot-toast";
 
 import { useQuery } from '@tanstack/react-query';
@@ -30,13 +32,13 @@ export default function MemberMarketplacePage() {
         <TabsTrigger value="pending">Pending approvals</TabsTrigger>
       </TabsList>
       <TabsContent value="all" className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {products.map((p: any) => (
+        {products.map((p: MarketplaceProduct) => (
           <ProductCard
             key={p._id}
             name={p.name}
             category={p.category || 'General'}
             price={p.price}
-            image={p.images?.[0] ? <img src={p.images[0]} alt={p.name} className="w-full h-32 object-cover rounded-lg" /> : '📦'}
+            image={p.images?.[0] ? <div className="relative w-full h-32"><Image src={p.images[0]} alt={p.name} fill className="object-cover rounded-lg" unoptimized /></div> : '📦'}
             seller={p.recycler?.name || 'Recycler'}
             score={p.sustainabilityScore || 80}
             onBuy={() => toast.success(`Purchased ${p.name}`)}
@@ -45,7 +47,7 @@ export default function MemberMarketplacePage() {
       </TabsContent>
       <TabsContent value="mine" className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <div className="col-span-full p-8 text-center text-muted-foreground border-2 border-dashed rounded-xl">
-          You don't have any listings yet.
+          You don&apos;t have any listings yet.
         </div>
       </TabsContent>
       <TabsContent value="sell">

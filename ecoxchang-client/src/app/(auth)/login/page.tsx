@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Leaf, Eye, EyeOff, Phone, Mail, Lock } from "lucide-react";
+import { Leaf, Eye, EyeOff, Phone, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +16,7 @@ import { mapApiUserToStore } from "@/lib/map-api-user";
 import { auth } from "@/lib/firebase";
 import { RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth";
 import { normalizePhoneNumber } from "@/lib/phone";
+import type { ApiError } from "@/types/api";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -33,12 +34,12 @@ export default function LoginPage() {
 
   const setupRecaptcha = () => {
     if (typeof window === "undefined") return;
-    if ((window as any).recaptchaVerifier) {
+    if (window.recaptchaVerifier) {
       console.log("Reusing existing RecaptchaVerifier");
       return;
     }
     
-    (window as any).recaptchaVerifier = new RecaptchaVerifier(
+    window.recaptchaVerifier = new RecaptchaVerifier(
       auth,
       "recaptcha-container",
       {
@@ -66,8 +67,9 @@ export default function LoginPage() {
         toast.success("Login successful!");
         router.push(defaultHomeForRole(mappedUser.role));
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Invalid email or password");
+    } catch (err) {
+      const apiErr = err as ApiError;
+      toast.error(apiErr.response?.data?.message || "Invalid email or password");
     } finally {
       setLoading(false);
     }
@@ -86,32 +88,33 @@ export default function LoginPage() {
       let finalOtpMode: "firebase" | "backend" = "firebase";
       try {
         setupRecaptcha();
-        const appVerifier = (window as any).recaptchaVerifier;
+        const appVerifier = window.recaptchaVerifier;
         if (!appVerifier) {
           throw new Error("reCAPTCHA verifier is not initialized");
         }
 
         console.log("Firebase Auth Initialized:", !!auth);
-        console.log("Recaptcha Exists:", !!(window as any).recaptchaVerifier);
+        console.log("Recaptcha Exists:", !!window.recaptchaVerifier);
 
         const confirmationResult = await signInWithPhoneNumber(auth, normalizedPhone, appVerifier);
-        (window as any).confirmationResult = confirmationResult;
-        (window as any).otpMode = "firebase";
+        window.confirmationResult = confirmationResult;
+        window.otpMode = "firebase";
         finalOtpMode = "firebase";
         firebaseSuccess = true;
-      } catch (firebaseErr: any) {
-        console.warn("Firebase phone auth failed, falling back to backend OTP:", firebaseErr.code || firebaseErr.message);
+      } catch (firebaseErr) {
+        const fErr = firebaseErr as ApiError;
+        console.warn("Firebase phone auth failed, falling back to backend OTP:", fErr.code || fErr.message);
 
         // Fall back to backend OTP system for any Firebase error in non-prod/testing
         try {
           const res = await api.post("/auth/send-otp", { phoneNumber: normalizedPhone });
           if (res.data?.success) {
-            (window as any).confirmationResult = null;
-            (window as any).otpMode = "backend";
+            window.confirmationResult = null;
+            window.otpMode = "backend";
             finalOtpMode = "backend";
             firebaseSuccess = true;
           }
-        } catch (backendErr: any) {
+        } catch (backendErr) {
           console.error("Backend OTP fallback failed:", backendErr);
           throw firebaseErr; // Throw the original Firebase error if fallback also fails
         }
@@ -123,9 +126,10 @@ export default function LoginPage() {
         toast.success("OTP sent successfully!");
         router.push("/verify-otp");
       }
-    } catch (err: any) {
-      console.error("OTP Send Error:", err);
-      toast.error(err.response?.data?.message || err.message || "Failed to send OTP");
+    } catch (err) {
+      const apiErr = err as ApiError;
+      console.error("OTP Send Error:", apiErr);
+      toast.error(apiErr.response?.data?.message || apiErr.message || "Failed to send OTP");
     } finally {
       setLoading(false);
     }
@@ -244,7 +248,7 @@ export default function LoginPage() {
           </CardContent>
           <CardFooter className="flex justify-center border-t p-6">
             <div className="text-sm text-muted-foreground">
-              Don't have an account?{" "}
+              Don&apos;t have an account?{" "}
               <Link href="/register" className="font-semibold text-primary hover:underline">
                 Sign up
               </Link>

@@ -17,13 +17,13 @@ import {
   CheckCircle2, 
   Loader2,
   Lock,
-  ArrowRight,
   Sparkles
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
+import type { RazorpayResponse, RazorpayFailure } from '@/types/api';
 
 interface PaymentModalProps {
   open: boolean;
@@ -56,7 +56,7 @@ export function PaymentModal({ open, onOpenChange, onSuccess, amount, planId }: 
         name: "EcoXchange",
         description: "Premium Membership",
         order_id: order.id,
-        handler: async function (response: any) {
+        handler: async function (response: RazorpayResponse) {
           try {
             // 3. Verify Payment
             const verifyRes = await api.post('/membership/verify-payment', {
@@ -97,8 +97,8 @@ export function PaymentModal({ open, onOpenChange, onSuccess, amount, planId }: 
         }
       };
 
-      const rzp = new (window as any).Razorpay(options);
-      rzp.on('payment.failed', function (response: any){
+      const rzp = new window.Razorpay(options);
+      rzp.on('payment.failed', function (response: RazorpayFailure){
         setIsProcessing(false);
         console.error(response.error);
       });
@@ -134,7 +134,7 @@ export function PaymentModal({ open, onOpenChange, onSuccess, amount, planId }: 
                 ].map((m) => (
                   <button
                     key={m.id}
-                    onClick={() => setMethod(m.id as any)}
+                    onClick={() => setMethod(m.id as 'upi' | 'card' | 'wallet')}
                     className={`flex-1 flex flex-col items-center gap-2 p-3 rounded-2xl border-2 transition-all ${
                       method === m.id ? 'border-primary bg-primary/5 text-primary' : 'border-transparent bg-muted hover:border-primary/20'
                     }`}

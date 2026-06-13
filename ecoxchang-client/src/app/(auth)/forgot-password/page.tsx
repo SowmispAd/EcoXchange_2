@@ -12,6 +12,7 @@ import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 import { api } from "@/lib/api";
 import { normalizePhoneNumber } from "@/lib/phone";
+import type { ApiError } from "@/types/api";
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
@@ -32,8 +33,9 @@ export default function ForgotPasswordPage() {
         toast.success("Reset OTP sent to your phone number!");
         setStep("reset");
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || err.message || "Failed to request OTP code");
+    } catch (err) {
+      const apiErr = err as ApiError;
+      toast.error(apiErr.response?.data?.message || apiErr.message || "Failed to request OTP code");
     } finally {
       setLoading(false);
     }
@@ -49,8 +51,9 @@ export default function ForgotPasswordPage() {
         toast.success("Password reset successfully! Please sign in.");
         router.push("/login");
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || err.message || "Password reset failed");
+    } catch (err) {
+      const apiErr = err as ApiError;
+      toast.error(apiErr.response?.data?.message || apiErr.message || "Password reset failed");
     } finally {
       setLoading(false);
     }

@@ -2,11 +2,12 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend } from 'recharts';
+import type { ChartDataItem } from '@/types/api';
 
 interface PieChartWidgetProps {
   title: string;
   description?: string;
-  data: any[];
+  data: ChartDataItem[];
   dataKey: string;
   nameKey: string;
   colors?: string[];

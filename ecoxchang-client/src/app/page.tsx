@@ -8,7 +8,6 @@ import {
   ArrowRight, 
   Leaf, 
   Recycle, 
-  ShieldCheck, 
   TrendingUp, 
   Users, 
   Globe, 
@@ -195,7 +194,7 @@ export default function LandingPage() {
               <Card key={i} className="border-none shadow-sm bg-background">
                 <CardContent className="pt-8">
                   <Quote className="h-8 w-8 text-primary/20 mb-4" />
-                  <p className="text-muted-foreground italic mb-6">"{t.text}"</p>
+                  <p className="text-muted-foreground italic mb-6">&quot;{t.text}&quot;</p>
                   <div className="flex items-center gap-3">
                     <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary">
                       {t.name[0]}

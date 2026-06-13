@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { ProductCard } from "@/components/eco/ProductCard";
-import { DashboardCard } from "@/components/eco/DashboardCard";
 import { useCartStore } from "@/store/useCartStore";
 import { api } from "@/lib/api";
 import { ShoppingCart, X, Plus, Minus, Trash2, CreditCard, Leaf } from "lucide-react";
@@ -10,12 +9,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { AnimatePresence, motion } from "framer-motion";
 import toast from "react-hot-toast";
+import type { MarketplaceProduct } from "@/types/api";
 
 export default function TrialMarketplacePage() {
-  const [products, setProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<MarketplaceProduct[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [shippingAddress, setShippingAddress] = useState("");
   const [loadingProducts, setLoadingProducts] = useState(false);
@@ -29,7 +29,7 @@ export default function TrialMarketplacePage() {
     checkout,
   } = useCartStore();
 
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     setLoadingProducts(true);
     try {
       const res = await api.get("/marketplace/products");
@@ -41,12 +41,15 @@ export default function TrialMarketplacePage() {
     } finally {
       setLoadingProducts(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchProducts();
-    fetchCart();
-  }, []);
+    const load = async () => {
+      await fetchProducts();
+      await fetchCart();
+    };
+    load();
+  }, [fetchProducts, fetchCart]);
 
   const handleCheckout = async () => {
     if (!shippingAddress.trim()) {

@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { api } from "@/lib/api";
-import { MessageSquare, X, Send, Bot, AlertTriangle } from "lucide-react";
+import { MessageSquare, X, Send, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import toast from "react-hot-toast";
+import type { ApiError } from "@/types/api";
 
 interface Message {
   role: "user" | "assistant";
@@ -37,8 +37,9 @@ export function AIChatbot() {
       if (res.data?.success && res.data?.data?.reply) {
         setMessages((prev) => [...prev, { role: "assistant", content: res.data.data.reply }]);
       }
-    } catch (err: any) {
-      const msg = err.response?.data?.message || "AI Chatbot query failed. You might be rate-limited or accessing restricted scopes.";
+    } catch (err) {
+      const apiErr = err as ApiError;
+      const msg = apiErr.response?.data?.message || "AI Chatbot query failed. You might be rate-limited or accessing restricted scopes.";
       setMessages((prev) => [
         ...prev,
         { role: "assistant", content: `⚠️ Error: ${msg}` },

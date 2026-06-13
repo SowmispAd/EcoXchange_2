@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Users, DollarSign, Search, Filter, MoreHorizontal, ShieldCheck, Factory, Sparkles } from 'lucide-react';
+import { Users, DollarSign, Search, Filter, MoreHorizontal, ShieldCheck, Sparkles } from 'lucide-react';
 import { Timeline } from '@/components/dashboard/Timeline';
 
 const revenueData = [
@@ -32,6 +32,7 @@ const collectionForecast = [
 
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import type { ApiUser } from '@/types/api';
 
 const systemEvents = [
   { id: 'evt1', title: 'New Recycler Partner Onboarded', description: 'GreenCorp Ltd. completed verification.', time: '10 mins ago', status: 'completed' as const },
@@ -217,7 +218,7 @@ export function AdminDashboard() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {usersData.map((user: any) => (
+                  {usersData.map((user: ApiUser) => (
                     <TableRow key={user._id}>
                       <TableCell className="font-medium text-xs text-muted-foreground">{user._id.substring(0, 8)}</TableCell>
                       <TableCell className="font-medium">{user.name}</TableCell>
@@ -240,7 +241,7 @@ export function AdminDashboard() {
                           {user.isSuspended ? 'Suspended' : 'Active'}
                         </Badge>
                       </TableCell>
-                      <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
+                      <TableCell>{user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}</TableCell>
                       <TableCell>
                         <Button variant="ghost" size="icon">
                           <MoreHorizontal className="h-4 w-4" />

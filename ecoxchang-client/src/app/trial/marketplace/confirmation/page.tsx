@@ -1,12 +1,15 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { CheckCircle, ArrowLeft, Leaf, ShoppingBag, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
 export default function OrderConfirmationPage() {
-  const orderNumber = `ECX-${Math.floor(100000 + Math.random() * 900000)}`;
+  const [orderNumber] = useState(
+    () => `ECX-${Date.now().toString(36).toUpperCase().slice(-6)}`
+  );
   const currentDate = new Date().toLocaleDateString("en-US", {
     weekday: "long",
     year: "numeric",

@@ -1,6 +1,5 @@
 import { test, expect } from '@playwright/test';
 import mongoose from 'mongoose';
-import path from 'path';
 import dotenv from 'dotenv';
 
 // Load server .env to connect to MongoDB

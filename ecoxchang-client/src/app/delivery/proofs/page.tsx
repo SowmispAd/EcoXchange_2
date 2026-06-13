@@ -8,7 +8,7 @@ export default function DeliveryProofsPage() {
     <DashboardCard title="Proof uploads" description="Attach geotagged photos for pickups and drop-offs.">
       <div className="max-w-2xl mx-auto mt-4">
         <CameraCapture 
-          onCapture={(blob, url) => {
+          onCapture={() => {
             console.log("Captured image for proof");
           }} 
         />

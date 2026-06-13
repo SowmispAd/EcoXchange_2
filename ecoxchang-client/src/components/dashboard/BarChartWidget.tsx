@@ -2,11 +2,12 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
+import type { ChartDataItem } from '@/types/api';
 
 interface BarChartWidgetProps {
   title: string;
   description?: string;
-  data: any[];
+  data: ChartDataItem[];
   dataKeys: { key: string; color: string; name: string }[];
   xAxisKey: string;
   className?: string;

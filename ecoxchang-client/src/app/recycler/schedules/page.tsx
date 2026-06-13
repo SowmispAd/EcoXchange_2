@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { api } from "@/lib/api";
 import { DashboardCard } from "@/components/eco/DashboardCard";
 import { Button } from "@/components/ui/button";
@@ -38,21 +38,34 @@ export default function RecyclerSchedulesPage() {
   const [instructions, setInstructions] = useState("");
   const [recurrence, setRecurrence] = useState("none");
 
-  const fetchSchedules = async () => {
+  const loadSchedules = useCallback(async () => {
     try {
+      setLoading(true);
       const res = await api.get("/recycler/schedules");
       if (res.data?.success) {
         setSchedules(res.data.data);
       }
-    } catch (err) {
+    } catch {
       toast.error("Failed to load schedules");
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchSchedules();
+    const init = async () => {
+      try {
+        const res = await api.get("/recycler/schedules");
+        if (res.data?.success) {
+          setSchedules(res.data.data);
+        }
+      } catch {
+        toast.error("Failed to load schedules");
+      } finally {
+        setLoading(false);
+      }
+    };
+    init();
   }, []);
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -74,10 +87,11 @@ export default function RecyclerSchedulesPage() {
       if (res.data?.success) {
         toast.success("Schedule created successfully");
         setShowForm(false);
-        fetchSchedules();
+        loadSchedules();
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to create schedule");
+    } catch (err) {
+      const apiErr = err as { response?: { data?: { message?: string } } };
+      toast.error(apiErr.response?.data?.message || "Failed to create schedule");
     }
   };
 
@@ -86,9 +100,9 @@ export default function RecyclerSchedulesPage() {
       const res = await api.patch(`/recycler/schedules/${id}/status`);
       if (res.data?.success) {
         toast.success(res.data.message);
-        fetchSchedules();
+        loadSchedules();
       }
-    } catch (err) {
+    } catch {
       toast.error("Failed to toggle status");
     }
   };
@@ -99,9 +113,9 @@ export default function RecyclerSchedulesPage() {
       const res = await api.delete(`/recycler/schedules/${id}`);
       if (res.data?.success) {
         toast.success("Schedule deleted");
-        fetchSchedules();
+        loadSchedules();
       }
-    } catch (err) {
+    } catch {
       toast.error("Failed to delete schedule");
     }
   };

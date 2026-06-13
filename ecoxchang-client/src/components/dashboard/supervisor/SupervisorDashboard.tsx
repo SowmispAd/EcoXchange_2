@@ -2,23 +2,15 @@
 
 import { useState } from 'react';
 import { StatCard } from '@/components/dashboard/StatCard';
-import { PieChartWidget } from '@/components/dashboard/PieChartWidget';
-import { BarChartWidget } from '@/components/dashboard/BarChartWidget';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { 
   ClipboardList, 
-  MapPin, 
-  Clock, 
-  AlertTriangle, 
-  ShieldAlert, 
   Users, 
-  Search, 
-  Filter,
+  ShieldAlert, 
   CheckCircle2,
   XCircle,
   Camera,
@@ -31,11 +23,6 @@ const initialTrialRequests = [
   { id: 'TR-101', member: 'Rahul S.', wasteType: 'Plastic Waste', day: 'Tuesday', time: '10:45 AM', status: 'pending' },
   { id: 'TR-102', member: 'Priya K.', wasteType: 'Plastic Waste', day: 'Tuesday', time: '11:20 AM', status: 'pending' },
   { id: 'TR-103', member: 'Amit V.', wasteType: 'Wet Waste', day: 'Monday', time: '09:15 AM', status: 'pending' },
-];
-
-const pendingRequests = [
-  { id: 'REQ-5001', member: 'John Doe', area: 'Downtown', type: 'Electronics', scheduled: 'Today, 14:00', status: 'pending', priority: 'high' },
-  { id: 'REQ-5002', member: 'Jane Smith', area: 'Westside', type: 'Plastics', scheduled: 'Today, 15:30', status: 'pending', priority: 'normal' },
 ];
 
 export function SupervisorDashboard() {
@@ -225,7 +212,7 @@ export function SupervisorDashboard() {
                 <BarChart3 className="h-8 w-8 text-white" />
               </div>
               <h4 className="text-xl font-bold mb-2">Performance Goal</h4>
-              <p className="text-indigo-100 text-sm mb-6">You've verified 92% of today's Trial requests. 8% remaining for the daily bonus!</p>
+              <p className="text-indigo-100 text-sm mb-6">You&apos;ve verified 92% of today&apos;s Trial requests. 8% remaining for the daily bonus!</p>
               <Progress value={92} className="h-2 bg-white/20 mb-4" />
             </CardContent>
           </Card>

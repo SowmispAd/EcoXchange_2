@@ -29,6 +29,7 @@ interface RevenueSummary {
 interface AnalyticsItem {
   name: string;
   value: number;
+  [key: string]: string | number | undefined;
 }
 
 export default function RecyclerRevenuePage() {
@@ -36,27 +37,26 @@ export default function RecyclerRevenuePage() {
   const [analytics, setAnalytics] = useState<AnalyticsItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchRevenueData = async () => {
-    try {
-      const [sumRes, anaRes] = await Promise.all([
-        api.get("/revenue/summary"),
-        api.get("/revenue/analytics"),
-      ]);
-      
-      if (sumRes.data?.success) {
-        setSummary(sumRes.data.data);
-      }
-      if (anaRes.data?.success) {
-        setAnalytics(anaRes.data.data);
-      }
-    } catch (err) {
-      toast.error("Failed to load dynamic revenue metrics");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
+    const fetchRevenueData = async () => {
+      try {
+        const [sumRes, anaRes] = await Promise.all([
+          api.get("/revenue/summary"),
+          api.get("/revenue/analytics"),
+        ]);
+        
+        if (sumRes.data?.success) {
+          setSummary(sumRes.data.data);
+        }
+        if (anaRes.data?.success) {
+          setAnalytics(anaRes.data.data);
+        }
+      } catch {
+        toast.error("Failed to load dynamic revenue metrics");
+      } finally {
+        setLoading(false);
+      }
+    };
     fetchRevenueData();
   }, []);
 

@@ -13,6 +13,7 @@ import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 import { api } from "@/lib/api";
 import { mapApiUserToStore } from "@/lib/map-api-user";
+import type { ApiError } from "@/types/api";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -50,8 +51,9 @@ export default function RegisterPage() {
         toast.success("Account created successfully!");
         router.push(defaultHomeForRole(mappedUser.role));
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Registration failed");
+    } catch (err) {
+      const apiErr = err as ApiError;
+      toast.error(apiErr.response?.data?.message || "Registration failed");
     } finally {
       setLoading(false);
     }

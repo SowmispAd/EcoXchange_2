@@ -9,12 +9,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
-import { Award, Leaf, Recycle, Calendar, Camera, ShoppingBag, Droplet, TreePine, Gift, Clock } from 'lucide-react';
+import { Award, Leaf, Recycle, Calendar, Camera, Droplet, TreePine, Gift, Clock } from 'lucide-react';
 import { MemberStats } from './MemberStats';
 import { useAuthStore } from '@/store/useAuthStore';
 
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import type { Pickup, RewardItem } from '@/types/api';
 
 const activityData = [
   { name: 'Mon', recycled: 12 },
@@ -59,16 +60,16 @@ export function MemberDashboard() {
   
   // Calculate total recycled from pickups
   const totalRecycled = recentPickups
-    .filter((p: any) => p.status === 'completed')
-    .reduce((sum: number, p: any) => sum + (Number(p.weight) || 0), 0);
+    .filter((p: Pickup) => p.status === 'completed')
+    .reduce((sum: number, p: Pickup) => sum + (Number(p.weight) || 0), 0);
     
   // Find next scheduled pickup
   const nextPickup = recentPickups
-    .filter((p: any) => p.status === 'scheduled' && new Date(p.scheduledDate) >= new Date())
-    .sort((a: any, b: any) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime())[0];
+    .filter((p: Pickup) => p.status === 'scheduled' && p.scheduledDate && new Date(p.scheduledDate) >= new Date())
+    .sort((a: Pickup, b: Pickup) => new Date(a.scheduledDate!).getTime() - new Date(b.scheduledDate!).getTime())[0];
     
-  const nextPickupDate = nextPickup ? new Date(nextPickup.scheduledDate).toLocaleDateString('en-US', { month: 'short', day: '2-digit' }) : 'None';
-  const activeRequests = recentPickups.filter((p: any) => p.status === 'scheduled' || p.status === 'pending').length;
+  const nextPickupDate = nextPickup && nextPickup.scheduledDate ? new Date(nextPickup.scheduledDate).toLocaleDateString('en-US', { month: 'short', day: '2-digit' }) : 'None';
+  const activeRequests = recentPickups.filter((p: Pickup) => p.status === 'scheduled' || p.status === 'pending').length;
 
   return (
     <div className="flex flex-col gap-6">
@@ -214,9 +215,9 @@ export function MemberDashboard() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {recentPickups.map((pickup: any) => (
+                  {recentPickups.map((pickup: Pickup) => (
                     <TableRow key={pickup._id}>
-                      <TableCell className="font-medium">{new Date(pickup.scheduledDate || pickup.createdAt).toLocaleDateString()}</TableCell>
+                      <TableCell className="font-medium">{(pickup.scheduledDate || pickup.createdAt) ? new Date(pickup.scheduledDate || pickup.createdAt!).toLocaleDateString() : 'N/A'}</TableCell>
                       <TableCell className="capitalize">{pickup.wasteType || pickup.type}</TableCell>
                       <TableCell>
                         <Badge 
@@ -240,7 +241,7 @@ export function MemberDashboard() {
             
             <TabsContent value="rewards" className="pt-6 pb-2">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {marketplaceItems.map((item: any) => (
+                {marketplaceItems.map((item: RewardItem) => (
                   <Card key={item._id || item.id} className="border border-muted hover:border-primary/50 transition-colors">
                     <CardHeader className="text-center pb-2">
                       <div className="text-6xl mb-2">{item.image || '🎁'}</div>

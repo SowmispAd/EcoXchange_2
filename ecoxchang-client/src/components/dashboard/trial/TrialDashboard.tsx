@@ -1,45 +1,43 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
   Rocket, 
-  ShieldCheck, 
   Sparkles, 
   Clock, 
   ShoppingBag, 
   Recycle, 
-  CheckCircle2, 
   Upload, 
-  ArrowRight,
   Camera,
   AlertCircle,
   Leaf
 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { useAuthStore } from "@/store/useAuthStore";
 import { dashboardPath } from "@/config/role-nav";
 import { SubscriptionModal } from "../SubscriptionModal";
 import { motion, AnimatePresence } from "framer-motion";
 import { api } from "@/lib/api";
 import toast from "react-hot-toast";
+import type { TrialSubmission, ApiError } from "@/types/api";
 
 export function TrialDashboard() {
   const user = useAuthStore((s) => s.user);
-  const ecoPoints = user?.ecoPoints ?? 0;
   
   const [streak, setStreak] = useState(user?.streak ?? 0);
   const [schedule, setSchedule] = useState<{ day: string; wasteCategory: string; instructions: string } | null>(null);
-  const [submissions, setSubmissions] = useState<any[]>([]);
+  const [submissions, setSubmissions] = useState<TrialSubmission[]>([]);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const fetchProgress = async () => {
+  const fetchProgress = useCallback(async () => {
     try {
       const res = await api.get("/trial/progress");
       if (res.data?.success) {
@@ -48,9 +46,9 @@ export function TrialDashboard() {
     } catch (err) {
       console.error("Failed to fetch progress", err);
     }
-  };
+  }, []);
 
-  const fetchSchedule = async () => {
+  const fetchSchedule = useCallback(async () => {
     try {
       const res = await api.get("/trial/schedule");
       if (res.data?.success) {
@@ -59,9 +57,9 @@ export function TrialDashboard() {
     } catch (err) {
       console.error("Failed to fetch schedule", err);
     }
-  };
+  }, []);
 
-  const fetchSubmissions = async () => {
+  const fetchSubmissions = useCallback(async () => {
     try {
       const res = await api.get("/trial/submissions/my");
       if (res.data?.success) {
@@ -70,13 +68,14 @@ export function TrialDashboard() {
     } catch (err) {
       console.error("Failed to fetch submissions", err);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchProgress();
-    fetchSchedule();
-    fetchSubmissions();
-  }, []);
+    const load = async () => {
+      await Promise.all([fetchProgress(), fetchSchedule(), fetchSubmissions()]);
+    };
+    load();
+  }, [fetchProgress, fetchSchedule, fetchSubmissions]);
 
   const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -105,8 +104,9 @@ export function TrialDashboard() {
           fetchProgress();
         }
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to submit photo proof");
+    } catch (err) {
+      const apiErr = err as ApiError;
+      toast.error(apiErr.response?.data?.message || "Failed to submit photo proof");
     } finally {
       setIsUploading(false);
       setIsSubmitting(false);
@@ -162,7 +162,7 @@ export function TrialDashboard() {
           </div>
 
           <div className="bg-white/10 backdrop-blur-xl rounded-[2rem] p-8 border border-white/20 text-center w-full md:w-80 shadow-inner">
-            <h3 className="text-xl font-bold mb-6">Today's Collection</h3>
+            <h3 className="text-xl font-bold mb-6">Today&apos;s Collection</h3>
             <div className="rounded-2xl bg-white/20 p-6 mb-6 transform hover:scale-105 transition-transform">
               <p className="text-sm font-bold uppercase tracking-wider mb-2 text-white">{schedule?.day || "Loading..."}</p>
               <p className="text-2xl font-black text-white">{schedule?.wasteCategory || "Please wait"}</p>
@@ -228,7 +228,7 @@ export function TrialDashboard() {
                     {submissions.map((sub) => (
                       <div key={sub._id} className="flex items-center justify-between p-4 bg-muted/30 border rounded-2xl">
                         <div className="flex items-center gap-3">
-                          <img src={sub.imageUrl} className="w-12 h-12 object-cover rounded-xl border" alt="Proof" />
+                          <Image src={sub.imageUrl} width={48} height={48} className="w-12 h-12 object-cover rounded-xl border" alt="Proof" />
                           <div>
                             <p className="text-sm font-bold">Submitted Proof</p>
                             <p className="text-xs text-muted-foreground">{new Date(sub.createdAt).toLocaleDateString()}</p>

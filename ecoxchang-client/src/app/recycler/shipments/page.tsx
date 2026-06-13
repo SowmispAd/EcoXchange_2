@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { DataTable } from "@/components/eco/DataTable";
+import { useEffect, useState, useCallback } from "react";
 import { DashboardCard } from "@/components/eco/DashboardCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -30,21 +29,34 @@ export default function RecyclerShipmentsPage() {
   const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null);
   const [remarks, setRemarks] = useState("");
 
-  const fetchShipments = async () => {
+  const loadShipments = useCallback(async () => {
     try {
+      setLoading(true);
       const res = await api.get("/shipments");
       if (res.data?.success) {
         setShipments(res.data.data);
       }
-    } catch (err) {
+    } catch {
       toast.error("Failed to load shipments");
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchShipments();
+    const init = async () => {
+      try {
+        const res = await api.get("/shipments");
+        if (res.data?.success) {
+          setShipments(res.data.data);
+        }
+      } catch {
+        toast.error("Failed to load shipments");
+      } finally {
+        setLoading(false);
+      }
+    };
+    init();
   }, []);
 
   const handleConfirmReceipt = async (id: string) => {
@@ -54,10 +66,11 @@ export default function RecyclerShipmentsPage() {
         toast.success("Receipt confirmed successfully!");
         setRemarks("");
         setSelectedShipment(null);
-        fetchShipments();
+        loadShipments();
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to confirm receipt");
+    } catch (err) {
+      const apiErr = err as { response?: { data?: { message?: string } } };
+      toast.error(apiErr.response?.data?.message || "Failed to confirm receipt");
     }
   };
 
@@ -69,10 +82,11 @@ export default function RecyclerShipmentsPage() {
       });
       if (res.data?.success) {
         toast.success("Processing status updated");
-        fetchShipments();
+        loadShipments();
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to update status");
+    } catch (err) {
+      const apiErr = err as { response?: { data?: { message?: string } } };
+      toast.error(apiErr.response?.data?.message || "Failed to update status");
     }
   };
 
@@ -84,10 +98,11 @@ export default function RecyclerShipmentsPage() {
       });
       if (res.data?.success) {
         toast.success("Shipment marked as completed");
-        fetchShipments();
+        loadShipments();
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to update status");
+    } catch (err) {
+      const apiErr = err as { response?: { data?: { message?: string } } };
+      toast.error(apiErr.response?.data?.message || "Failed to update status");
     }
   };
 

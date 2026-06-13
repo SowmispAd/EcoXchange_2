@@ -21,6 +21,7 @@ import toast from "react-hot-toast";
 import { api } from "@/lib/api";
 import { mapApiUserToStore } from "@/lib/map-api-user";
 import { toAppRole } from "@/lib/role-map";
+import type { ApiError } from "@/types/api";
 
 interface AuthPageProps {
   role: AppRole;
@@ -83,8 +84,9 @@ export default function AuthPage({ role, type }: AuthPageProps) {
           router.push(defaultHomeForRole(toAppRole(String(user.role || role))));
         }
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Authentication failed");
+    } catch (err) {
+      const apiErr = err as ApiError;
+      toast.error(apiErr.response?.data?.message || "Authentication failed");
     } finally {
       setLoading(false);
     }

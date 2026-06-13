@@ -2,11 +2,12 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import type { ChartDataItem } from '@/types/api';
 
 interface ActivityChartProps {
   title: string;
   description?: string;
-  data: any[];
+  data: ChartDataItem[];
   dataKey: string;
   className?: string;
 }

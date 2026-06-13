@@ -11,14 +11,11 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
 import { 
   CheckCircle2, 
   Trash2, 
   Package, 
   QrCode, 
-  CreditCard, 
-  Smartphone, 
   ArrowRight,
   Sparkles,
   Check
@@ -74,7 +71,7 @@ export function SubscriptionModal({ open, onOpenChange }: SubscriptionModalProps
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {/* Left Side: Benefits */}
               <div className="space-y-6">
-                <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">What's Included</h4>
+                <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">What&apos;s Included</h4>
                 <div className="space-y-4">
                   {[
                     { icon: CheckCircle2, text: 'Unlimited Pickup Requests' },
@@ -117,7 +114,7 @@ export function SubscriptionModal({ open, onOpenChange }: SubscriptionModalProps
                   {binOptions.map((bin) => (
                     <div 
                       key={bin.id}
-                      onClick={() => setSelectedBin(bin.id as any)}
+                      onClick={() => setSelectedBin(bin.id as 'small' | 'medium' | 'large')}
                       className={`relative p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between ${
                         selectedBin === bin.id 
                           ? 'border-primary bg-primary/5 shadow-md' 

@@ -26,7 +26,7 @@ export default function RecyclerPaymentsPage() {
         if (res.data?.success) {
           setHistory(res.data.data);
         }
-      } catch (err) {
+      } catch {
         toast.error("Failed to load payout histories");
       } finally {
         setLoading(false);
