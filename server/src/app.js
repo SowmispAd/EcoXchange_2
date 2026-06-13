@@ -120,6 +120,8 @@ const { orderRoutes } = require("./routes/orderRoutes");
 app.use("/api/orders", orderRoutes);
 const { dashboardRoutes } = require("./routes/dashboardRoutes");
 app.use("/api/dashboard", dashboardRoutes);
+const { deliveryRouter } = require("./routes/deliveryRoutes");
+app.use("/api/delivery", deliveryRouter);
 
 // 404 handler (keep before error middleware)
 app.use((req, res) => {

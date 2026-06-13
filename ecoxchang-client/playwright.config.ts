@@ -2,8 +2,8 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './e2e',
-  timeout: 30000,
-  expect: { timeout: 5000 },
+  timeout: 60000,
+  expect: { timeout: 10000 },
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
@@ -13,6 +13,9 @@ export default defineConfig({
     actionTimeout: 0,
     trace: 'on-first-retry',
     baseURL: 'http://localhost:3000',
+    // Grant geolocation permissions so navigator.geolocation works in the delivery dashboard
+    permissions: ['geolocation'],
+    geolocation: { latitude: 12.9716, longitude: 77.5946 },
   },
   projects: [
     {

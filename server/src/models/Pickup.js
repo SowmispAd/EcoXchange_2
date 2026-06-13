@@ -47,9 +47,33 @@ const pickupSchema = new mongoose.Schema(
         "in_progress",
         "completed",
         "cancelled",
+        "failed",
       ],
       default: "pending",
     },
+
+    statusHistory: [
+      {
+        status: { type: String, required: true },
+        changedBy: { type: mongoose.Schema.Types.ObjectId, ref: "DeliveryAgent" },
+        timestamp: { type: Date, default: Date.now },
+        notes: { type: String },
+      },
+    ],
+
+    verificationStatus: {
+      type: String,
+      enum: ["pending", "verified", "rejected"],
+      default: "pending",
+    },
+    verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: "Supervisor" },
+    verifiedAt: { type: Date },
+
+    qrScanned: { type: Boolean, default: false },
+    qrScannedAt: { type: Date },
+
+    destinationLat: { type: Number, default: 12.9716 },
+    destinationLng: { type: Number, default: 77.5946 },
 
     memberImage: { type: String },
     completionImage: { type: String },
@@ -90,6 +114,9 @@ const pickupSchema = new mongoose.Schema(
   },
   { timestamps: true },
 );
+
+pickupSchema.index({ assignedAgent: 1 });
+pickupSchema.index({ status: 1 });
 
 const Pickup = mongoose.model("Pickup", pickupSchema);
 
