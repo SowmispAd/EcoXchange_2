@@ -2,7 +2,7 @@
 
 import { DashboardCard } from "@/components/eco/DashboardCard";
 import { TimelineTracker } from "@/components/eco/TimelineTracker";
-import { mockMemberTracking } from "@/lib/mock/data";
+const mockMemberTracking: any[] = [];
 
 const steps = mockMemberTracking.map((s) => ({
   id: s.id,

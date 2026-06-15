@@ -6,7 +6,7 @@ import { ProductForm } from "@/components/eco/ProductForm";
 import { ApprovalTable } from "@/components/eco/ApprovalTable";
 import Image from "next/image";
 import type { MarketplaceProduct } from "@/types/api";
-import { mockPendingApprovals } from "@/lib/mock/data";
+const mockPendingApprovals: any[] = [];
 import toast from "react-hot-toast";
 
 import { useQuery } from '@tanstack/react-query';

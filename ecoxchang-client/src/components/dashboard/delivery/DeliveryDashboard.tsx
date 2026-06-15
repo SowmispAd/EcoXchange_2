@@ -368,7 +368,7 @@ export function DeliveryDashboard() {
   }, [tasks]);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 pb-12">
       {/* Offline Sync Banner */}
       {(!isOnline || offlineCount > 0) && (
         <div className="flex items-center justify-between gap-4 p-4 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-600">
@@ -387,106 +387,45 @@ export function DeliveryDashboard() {
       )}
 
       {/* Analytics stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title="Total Pickups Today" value={String(analytics.tasksToday)} icon={Package} description="Assigned pickups" />
         <StatCard title="Completed Tasks" value={String(analytics.completedTasks)} icon={CheckCircle} />
         <StatCard title="Distance Covered" value={`${analytics.distanceCoveredKm} km`} icon={Truck} description="Based on GPS history" />
-        <StatCard title="Proof Success Rate" value={`${analytics.proofUploadSuccessRate}%`} icon={Camera} description="Verified proof uploads" />
+        <StatCard title="Proof Success Rate" value={`${analytics.proofUploadSuccessRate}%`} icon={Camera} description="Verified uploads" />
       </div>
 
-      {/* Route map widget */}
-      {mapOpen && (
-        <Card className={cn("transition-all duration-300", mapFullscreen && "fixed inset-4 z-50 bg-background overflow-auto shadow-2xl")}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <div>
-              <CardTitle>Delivery Navigation Map</CardTitle>
-              <CardDescription>Live route calculations and destinations</CardDescription>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button size="icon" variant="ghost" onClick={() => void fetchData()} title="Refresh route">
-                <RefreshCw className="h-4 w-4" />
-              </Button>
-              <Button size="icon" variant="ghost" onClick={() => setMapMinimized(!mapMinimized)} title={mapMinimized ? "Maximize" : "Minimize"}>
-                <Minimize2 className="h-4 w-4" />
-              </Button>
-              <Button size="icon" variant="ghost" onClick={() => setMapFullscreen(!mapFullscreen)} title="Toggle Fullscreen">
-                <Maximize2 className="h-4 w-4" />
-              </Button>
-              <Button size="icon" variant="ghost" onClick={() => setMapOpen(false)} title="Close map">
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
+      {/* PRIORITY UI: 2x2 Grid for Tasks, Map, Scanner, Camera */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        
+        {/* 1. Assigned Tasks Card */}
+        <Card className="flex flex-col h-[450px] shadow-lg border-primary/20">
+          <CardHeader className="pb-3 border-b border-border/50">
+            <CardTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5 text-primary" /> Assigned Tasks
+            </CardTitle>
+            <CardDescription>Live pickup schedules & status</CardDescription>
           </CardHeader>
-          {!mapMinimized && (
-            <CardContent className="h-[380px] w-full">
-              <RouteMap title="Live Routing Map" points={routePoints} />
-            </CardContent>
-          )}
-        </Card>
-      )}
-
-      {!mapOpen && (
-        <div className="flex justify-end">
-          <Button variant="outline" size="sm" onClick={() => setMapOpen(true)} className="gap-1">
-            <RefreshCw className="h-3.5 w-3.5" /> Reopen Navigation Map
-          </Button>
-        </div>
-      )}
-
-      {/* QR Scanner Inline Card */}
-      {scannerOpen && (
-        <Card className="border-2 border-primary/40 relative">
-          <button onClick={() => setScannerOpen(false)} className="absolute top-4 right-4 text-muted-foreground hover:text-foreground">
-            <X className="h-5 w-5" />
-          </button>
-          <CardContent className="pt-6">
-            <QRScanner onScan={handleQRScan} />
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Camera Capture Inline Card */}
-      {cameraOpen && (
-        <Card className="border-2 border-primary/40 relative">
-          <button onClick={() => setCameraOpen(false)} className="absolute top-4 right-4 text-muted-foreground hover:text-foreground">
-            <X className="h-5 w-5" />
-          </button>
-          <CardContent className="pt-6">
-            <CameraCapture onCapture={handleCapture} />
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Main Grid: Tasks & Timeline */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Assigned Tasks</CardTitle>
-            <CardDescription>Live pickup schedules & verification states</CardDescription>
-          </CardHeader>
-          <CardContent>
+          <CardContent className="flex-1 overflow-auto p-0">
             {loading ? (
-              <div className="text-center py-6 text-muted-foreground animate-pulse">Loading tasks from API...</div>
+              <div className="text-center py-6 text-muted-foreground animate-pulse">Loading tasks...</div>
             ) : tasks.length === 0 ? (
               <div className="text-center py-6 text-muted-foreground">No tasks currently assigned.</div>
             ) : (
               <Table>
-                <TableHeader>
+                <TableHeader className="bg-muted/50 sticky top-0 z-10">
                   <TableRow>
                     <TableHead>Customer</TableHead>
-                    <TableHead>Address</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {tasks.map((task) => (
-                    <TableRow key={task._id}>
-                      <TableCell>
-                        <div className="font-semibold">{task.user?.fullName || "EcoXchange Customer"}</div>
-                        <div className="text-xs text-muted-foreground">{task.wasteType.toUpperCase()} ({task.estimatedWeight}kg)</div>
+                    <TableRow key={task._id} className={task.status === "in_progress" ? "bg-blue-500/5" : ""}>
+                      <TableCell className="py-3">
+                        <div className="font-semibold text-sm">{task.user?.fullName || "Customer"}</div>
+                        <div className="text-xs text-muted-foreground max-w-[150px] truncate" title={task.address}>{task.address}</div>
                       </TableCell>
-                      <TableCell className="max-w-[200px] truncate text-sm">{task.address}</TableCell>
                       <TableCell>
                         <Badge
                           variant="outline"
@@ -503,36 +442,29 @@ export function DeliveryDashboard() {
                       </TableCell>
                       <TableCell className="text-right space-x-1.5 whitespace-nowrap">
                         {task.status === "assigned" && (
-                          <Button size="sm" onClick={() => void handleAccept(task._id)}>
+                          <Button size="sm" onClick={() => void handleAccept(task._id)} className="w-20">
                             Accept
                           </Button>
                         )}
                         {task.status === "accepted" && (
-                          <Button size="sm" onClick={() => void handleStart(task._id)} className="bg-blue-600 hover:bg-blue-700">
+                          <Button size="sm" onClick={() => void handleStart(task._id)} className="bg-blue-600 hover:bg-blue-700 w-20">
                             Start
                           </Button>
                         )}
                         {task.status === "in_progress" && (
-                          <>
-                            <Button size="sm" variant="outline" onClick={() => triggerScan(task._id)} className="gap-1 border-primary/20">
-                              <ScanLine className="h-3.5 w-3.5" /> Scan QR
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={() => triggerCamera(task._id)} className="gap-1 border-primary/20">
-                              <Camera className="h-3.5 w-3.5" /> Upload Proof
-                            </Button>
-                            <Button size="sm" onClick={() => void handleComplete(task._id)} className="bg-emerald-600 hover:bg-emerald-700">
+                          <div className="flex flex-col gap-1.5 items-end">
+                            <div className="flex gap-1.5">
+                              <Button size="sm" variant="outline" onClick={() => triggerScan(task._id)} className="h-8 px-2 border-primary/20 bg-background" title="Scan QR">
+                                <ScanLine className="h-4 w-4 text-primary" />
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => triggerCamera(task._id)} className="h-8 px-2 border-primary/20 bg-background" title="Capture Proof">
+                                <Camera className="h-4 w-4 text-primary" />
+                              </Button>
+                            </div>
+                            <Button size="sm" onClick={() => void handleComplete(task._id)} className="bg-emerald-600 hover:bg-emerald-700 h-8 w-full text-xs">
                               Complete
                             </Button>
-                          </>
-                        )}
-                        {task.user?.phoneNumber ? (
-                          <a href={`tel:${task.user.phoneNumber}`} className="inline-flex items-center justify-center p-2 rounded-md hover:bg-muted text-foreground">
-                            <Phone className="h-4 w-4" />
-                          </a>
-                        ) : (
-                          <button disabled className="p-2 text-muted-foreground opacity-40">
-                            <Phone className="h-4 w-4" />
-                          </button>
+                          </div>
                         )}
                       </TableCell>
                     </TableRow>
@@ -543,21 +475,127 @@ export function DeliveryDashboard() {
           </CardContent>
         </Card>
 
-        {/* Timeline events */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Daily Timeline</CardTitle>
-            <CardDescription>Real-time operational feed</CardDescription>
+        {/* 2. Route Navigation Card */}
+        <Card className={cn("flex flex-col h-[450px] shadow-lg border-primary/20", mapFullscreen && "fixed inset-4 z-50 bg-background shadow-2xl h-auto")}>
+          <CardHeader className="pb-3 border-b border-border/50 flex flex-row items-center justify-between space-y-0">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Truck className="h-5 w-5 text-primary" /> Route Navigation
+              </CardTitle>
+              <CardDescription>Live route to destinations</CardDescription>
+            </div>
+            <div className="flex items-center gap-1">
+              <Button size="icon" variant="ghost" onClick={() => void fetchData()} className="h-8 w-8">
+                <RefreshCw className="h-4 w-4" />
+              </Button>
+              <Button size="icon" variant="ghost" onClick={() => setMapFullscreen(!mapFullscreen)} className="h-8 w-8">
+                {mapFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+              </Button>
+            </div>
           </CardHeader>
-          <CardContent>
-            {timelineEvents.length === 0 ? (
-              <div className="text-center py-6 text-muted-foreground">No events recorded.</div>
+          <CardContent className="flex-1 p-0 overflow-hidden relative min-h-[300px]">
+            <RouteMap title="Live Routing Map" points={routePoints} />
+          </CardContent>
+        </Card>
+
+        {/* 3. QR Scanner Card */}
+        <Card className="flex flex-col min-h-[350px] shadow-lg border-primary/20 bg-background/50">
+          <CardHeader className="pb-3 border-b border-border/50">
+            <CardTitle className="flex items-center gap-2">
+              <ScanLine className="h-5 w-5 text-primary" /> QR Scanner
+            </CardTitle>
+            <CardDescription>Verify customer pickup QR codes</CardDescription>
+          </CardHeader>
+          <CardContent className="flex-1 flex flex-col items-center justify-center p-6 relative">
+            {scannerOpen ? (
+              <div className="w-full h-full relative">
+                <button onClick={() => setScannerOpen(false)} className="absolute top-2 right-2 z-10 p-2 bg-background/80 rounded-full text-muted-foreground hover:text-foreground shadow">
+                  <X className="h-4 w-4" />
+                </button>
+                <div className="rounded-xl overflow-hidden shadow-inner border h-[250px] flex items-center justify-center bg-black/5">
+                  <QRScanner onScan={handleQRScan} />
+                </div>
+              </div>
             ) : (
-              <Timeline items={timelineEvents} />
+              <div className="text-center w-full max-w-sm">
+                <div className="h-20 w-20 mx-auto bg-primary/10 rounded-full flex items-center justify-center mb-4">
+                  <ScanLine className="h-10 w-10 text-primary" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">Scanner Inactive</h3>
+                <p className="text-sm text-muted-foreground mb-6">Select a task and click 'Scan QR' to activate the camera scanner.</p>
+                <Button 
+                  size="lg" 
+                  className="w-full font-bold h-14 text-lg" 
+                  onClick={() => {
+                    const activeTask = tasks.find(t => t.status === "in_progress");
+                    if (activeTask) triggerScan(activeTask._id);
+                    else toast.error("Start a task first to scan its QR code.");
+                  }}
+                >
+                  <ScanLine className="mr-2 h-5 w-5" /> Launch Scanner
+                </Button>
+              </div>
             )}
           </CardContent>
         </Card>
+
+        {/* 4. Camera Capture Card */}
+        <Card className="flex flex-col min-h-[350px] shadow-lg border-primary/20 bg-background/50">
+          <CardHeader className="pb-3 border-b border-border/50">
+            <CardTitle className="flex items-center gap-2">
+              <Camera className="h-5 w-5 text-primary" /> Proof Capture
+            </CardTitle>
+            <CardDescription>Upload photographic proof of pickup</CardDescription>
+          </CardHeader>
+          <CardContent className="flex-1 flex flex-col items-center justify-center p-6 relative">
+            {cameraOpen ? (
+              <div className="w-full h-full relative">
+                <button onClick={() => setCameraOpen(false)} className="absolute top-2 right-2 z-10 p-2 bg-background/80 rounded-full text-muted-foreground hover:text-foreground shadow">
+                  <X className="h-4 w-4" />
+                </button>
+                <div className="rounded-xl overflow-hidden shadow-inner border h-[250px] flex items-center justify-center bg-black/5">
+                  <CameraCapture onCapture={handleCapture} />
+                </div>
+              </div>
+            ) : (
+              <div className="text-center w-full max-w-sm">
+                <div className="h-20 w-20 mx-auto bg-primary/10 rounded-full flex items-center justify-center mb-4">
+                  <Camera className="h-10 w-10 text-primary" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">Camera Inactive</h3>
+                <p className="text-sm text-muted-foreground mb-6">Select a task and click 'Upload Proof' to take a photo of the collected waste.</p>
+                <Button 
+                  size="lg" 
+                  className="w-full font-bold h-14 text-lg bg-blue-600 hover:bg-blue-700" 
+                  onClick={() => {
+                    const activeTask = tasks.find(t => t.status === "in_progress");
+                    if (activeTask) triggerCamera(activeTask._id);
+                    else toast.error("Start a task first to capture proof.");
+                  }}
+                >
+                  <Camera className="mr-2 h-5 w-5" /> Launch Camera
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
       </div>
+
+      {/* Timeline events */}
+      <Card className="shadow-lg border-border/50">
+        <CardHeader>
+          <CardTitle>Daily Timeline</CardTitle>
+          <CardDescription>Real-time operational feed</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {timelineEvents.length === 0 ? (
+            <div className="text-center py-6 text-muted-foreground">No events recorded.</div>
+          ) : (
+            <Timeline items={timelineEvents} />
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

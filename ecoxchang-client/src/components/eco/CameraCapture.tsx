@@ -31,6 +31,7 @@ export function CameraCapture({
   const [state, setState] = useState<CameraState>("idle");
   const [errorMsg, setErrorMsg] = useState<string>("");
   const [capturedUrl, setCapturedUrl] = useState<string | null>(null);
+  const [capturedBlob, setCapturedBlob] = useState<Blob | null>(null);
   const [facingMode, setFacingMode] = useState<"user" | "environment">("environment");
   const [hasMultipleCameras, setHasMultipleCameras] = useState(false);
 
@@ -147,18 +148,23 @@ export function CameraCapture({
     stopStream();
     setState("captured");
 
-    // Convert to blob and fire callback
     canvas.toBlob(
       (blob) => {
-        if (blob) onCapture?.(blob, dataUrl);
+        if (blob) {
+          setCapturedBlob(blob);
+          if (!allowRetake) {
+            onCapture?.(blob, dataUrl);
+          }
+        }
       },
       "image/jpeg",
       0.92
     );
-  }, [facingMode, onCapture, stopStream]);
+  }, [facingMode, allowRetake, onCapture, stopStream]);
 
   const retake = useCallback(() => {
     setCapturedUrl(null);
+    setCapturedBlob(null);
     setState("idle");
     startCamera(facingMode);
   }, [facingMode, startCamera]);
@@ -277,7 +283,11 @@ export function CameraCapture({
               <Button variant="outline" onClick={retake} className="gap-2">
                 <RotateCw className="h-4 w-4" /> Retake
               </Button>
-              <Button onClick={() => {}} className="gap-2 bg-emerald-600 hover:bg-emerald-700">
+              <Button onClick={() => {
+                if (capturedBlob && capturedUrl) {
+                  onCapture?.(capturedBlob, capturedUrl);
+                }
+              }} className="gap-2 bg-emerald-600 hover:bg-emerald-700">
                 <Check className="h-4 w-4" /> Use Photo
               </Button>
             </>

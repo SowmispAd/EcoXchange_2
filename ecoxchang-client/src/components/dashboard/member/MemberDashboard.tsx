@@ -17,15 +17,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import type { Pickup, RewardItem } from '@/types/api';
 
-const activityData = [
-  { name: 'Mon', recycled: 12 },
-  { name: 'Tue', recycled: 19 },
-  { name: 'Wed', recycled: 15 },
-  { name: 'Thu', recycled: 22 },
-  { name: 'Fri', recycled: 28 },
-  { name: 'Sat', recycled: 35 },
-  { name: 'Sun', recycled: 42 },
-];
+import { useMemo } from 'react';
 
 export function MemberDashboard() {
   const name = useAuthStore((s) => s.user?.name ?? 'Member');
@@ -61,7 +53,32 @@ export function MemberDashboard() {
   // Calculate total recycled from pickups
   const totalRecycled = recentPickups
     .filter((p: Pickup) => p.status === 'completed')
-    .reduce((sum: number, p: Pickup) => sum + (Number(p.weight) || 0), 0);
+    .reduce((sum: number, p: Pickup) => sum + (Number(p.actualWeight) || Number(p.weight) || 0), 0);
+    
+  const activityData = useMemo(() => {
+    const data = [];
+    const today = new Date();
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const dayStr = d.toLocaleDateString('en-US', { weekday: 'short' });
+      
+      const dayRecycled = recentPickups
+        .filter((p: Pickup) => {
+          if (p.status !== 'completed' || (!p.updatedAt && !p.createdAt)) return false;
+          const pDate = new Date(p.updatedAt || p.createdAt!);
+          return pDate.getDate() === d.getDate() && pDate.getMonth() === d.getMonth() && pDate.getFullYear() === d.getFullYear();
+        })
+        .reduce((sum: number, p: Pickup) => sum + (Number(p.actualWeight) || Number(p.weight) || 0), 0);
+        
+      data.push({ name: dayStr, recycled: dayRecycled });
+    }
+    return data;
+  }, [recentPickups]);
+
+  // Derived environmental metrics
+  const carbonSaved = Math.round(totalRecycled * 2.5);
+  const waterConserved = Math.round(totalRecycled * 15);
     
   // Find next scheduled pickup
   const nextPickup = recentPickups
@@ -144,7 +161,7 @@ export function MemberDashboard() {
             <CardContent className="space-y-4">
               <div className="flex justify-between items-end">
                 <div className="space-y-1">
-                  <p className="text-3xl font-black text-blue-600">68%</p>
+                  <p className="text-3xl font-black text-blue-600">{activeRequests > 0 ? "70%" : "25%"}</p>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Fill Level</p>
                 </div>
                 <div className="text-right">
@@ -152,10 +169,10 @@ export function MemberDashboard() {
                   <p className="text-[10px] mt-1 font-medium text-muted-foreground">Last sync: 2m ago</p>
                 </div>
               </div>
-              <Progress value={68} className="h-2 bg-blue-100" />
+              <Progress value={activeRequests > 0 ? 70 : 25} className="h-2 bg-blue-100" />
               <div className="pt-2 flex items-center gap-2 text-xs font-medium text-blue-700">
                 <Clock className="h-3.5 w-3.5" />
-                Next pickup estimated in 2 days
+                {nextPickupDate !== 'None' ? `Next pickup scheduled for ${nextPickupDate}` : 'No upcoming pickups scheduled'}
               </div>
             </CardContent>
           </Card>
@@ -166,24 +183,24 @@ export function MemberDashboard() {
         <ProgressWidget 
           title="Carbon Saved" 
           description="Equivalent to planting trees" 
-          value={45} 
-          max={100} 
+          value={carbonSaved} 
+          max={Math.max(100, carbonSaved + 20)} 
           icon={TreePine} 
           color="bg-emerald-500" 
         />
         <ProgressWidget 
           title="Water Conserved" 
           description="From recycled plastics" 
-          value={120} 
-          max={500} 
+          value={waterConserved} 
+          max={Math.max(500, waterConserved + 100)} 
           icon={Droplet} 
           color="bg-blue-500" 
         />
         <ProgressWidget 
           title="Tier Progress" 
-          description="Points to Platinum" 
-          value={2450} 
-          max={3000} 
+          description="Points to Next Tier" 
+          value={ecoPoints} 
+          max={Math.max(1000, Math.ceil(ecoPoints/1000)*1000)} 
           icon={Award} 
           color="bg-amber-500" 
         />

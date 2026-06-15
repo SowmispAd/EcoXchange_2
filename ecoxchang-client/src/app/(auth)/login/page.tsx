@@ -38,6 +38,10 @@ export default function LoginPage() {
       console.log("Reusing existing RecaptchaVerifier");
       return;
     }
+    if (!auth) {
+      console.error("Firebase auth is not initialized");
+      return;
+    }
     
     window.recaptchaVerifier = new RecaptchaVerifier(
       auth,
@@ -96,6 +100,9 @@ export default function LoginPage() {
         console.log("Firebase Auth Initialized:", !!auth);
         console.log("Recaptcha Exists:", !!window.recaptchaVerifier);
 
+        if (!auth) {
+          throw new Error("Firebase auth is not initialized");
+        }
         const confirmationResult = await signInWithPhoneNumber(auth, normalizedPhone, appVerifier);
         window.confirmationResult = confirmationResult;
         window.otpMode = "firebase";

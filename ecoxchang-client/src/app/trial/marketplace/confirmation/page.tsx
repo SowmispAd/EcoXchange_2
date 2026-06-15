@@ -6,9 +6,14 @@ import { CheckCircle, ArrowLeft, Leaf, ShoppingBag, Calendar } from "lucide-reac
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
-export default function OrderConfirmationPage() {
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
+
+function ConfirmationContent() {
+  const searchParams = useSearchParams();
+  const orderId = searchParams.get("orderId");
   const [orderNumber] = useState(
-    () => `ECX-${Date.now().toString(36).toUpperCase().slice(-6)}`
+    () => orderId || `ECX-${Date.now().toString(36).toUpperCase().slice(-6)}`
   );
   const currentDate = new Date().toLocaleDateString("en-US", {
     weekday: "long",
@@ -84,5 +89,13 @@ export default function OrderConfirmationPage() {
         </div>
       </motion.div>
     </div>
+  );
+}
+
+export default function OrderConfirmationPage() {
+  return (
+    <Suspense fallback={<div className="min-h-[75vh] flex items-center justify-center">Loading...</div>}>
+      <ConfirmationContent />
+    </Suspense>
   );
 }

@@ -44,6 +44,10 @@ export default function VerifyOtpPage() {
       console.log("Reusing existing RecaptchaVerifier");
       return;
     }
+    if (!auth) {
+      console.error("Firebase auth is not initialized");
+      return;
+    }
     
     window.recaptchaVerifier = new RecaptchaVerifier(
       auth,
@@ -143,6 +147,9 @@ export default function VerifyOtpPage() {
           throw new Error("reCAPTCHA verifier is not initialized");
         }
 
+        if (!auth) {
+          throw new Error("Firebase auth is not initialized");
+        }
         try {
           const confirmationResult = await signInWithPhoneNumber(auth, normalizedPhone, appVerifier);
           window.confirmationResult = confirmationResult;

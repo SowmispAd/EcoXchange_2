@@ -2,7 +2,7 @@
 
 import { CalendarView } from "@/components/eco/CalendarView";
 import { StatsGrid } from "@/components/eco/StatsGrid";
-import { mockCalendarCollections } from "@/lib/mock/data";
+const mockCalendarCollections: any[] = [];
 import { Droplets, Package, Sparkles, Recycle } from "lucide-react";
 
 export default function MemberCalendarPage() {
