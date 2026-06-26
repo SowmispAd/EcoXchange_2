@@ -13,16 +13,37 @@ const roles: { id: AppRole; label: string; desc: string }[] = [
   { id: "admin", label: "Admin", desc: "Platform control" },
 ];
 
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+
 export default function AdminRolesPage() {
   return (
     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      {roles.map((r) => (
-        <DashboardCard key={r.id} title={r.label} description={r.desc}>
-          <Badge variant="outline" className="capitalize">
-            {r.id}
-          </Badge>
-        </DashboardCard>
-      ))}
+      {roles.map((r) => {
+        // Map app roles to URL slugs
+        const slugMap: Record<string, string> = {
+          trial: "trial-members",
+          member: "permanent-members",
+          supervisor: "supervisors",
+          delivery: "delivery-agents",
+          recycler: "recyclers",
+          admin: "admins",
+        };
+        const slug = slugMap[r.id] || "users";
+
+        return (
+          <DashboardCard key={r.id} title={r.label} description={r.desc}>
+            <div className="flex justify-between items-center mt-4">
+              <Badge variant="outline" className="capitalize">
+                {r.id}
+              </Badge>
+              <Link href={`/admin/roles/${slug}`}>
+                <Button variant="secondary" size="sm">Manage Users</Button>
+              </Link>
+            </div>
+          </DashboardCard>
+        );
+      })}
     </div>
   );
 }

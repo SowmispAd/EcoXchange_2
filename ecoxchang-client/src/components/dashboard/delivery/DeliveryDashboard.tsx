@@ -27,6 +27,7 @@ import {
   RefreshCw,
   Wifi,
   WifiOff,
+  MapPin,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { api } from "@/lib/api";
@@ -83,6 +84,18 @@ export function DeliveryDashboard() {
   const [mapOpen, setMapOpen] = useState(true);
   const [mapMinimized, setMapMinimized] = useState(false);
   const [mapFullscreen, setMapFullscreen] = useState(false);
+
+  // Restore map from minimized/closed state
+  const handleToggleMap = () => {
+    if (!mapOpen) {
+      setMapOpen(true);
+      setMapMinimized(false);
+    } else if (mapMinimized) {
+      setMapMinimized(false);
+    } else {
+      setMapMinimized(true);
+    }
+  };
 
   // QR and Camera controls
   const [scannerOpen, setScannerOpen] = useState(false);
@@ -417,6 +430,7 @@ export function DeliveryDashboard() {
                     <TableHead>Customer</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Action</TableHead>
+                    <TableHead className="w-[40px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -467,6 +481,18 @@ export function DeliveryDashboard() {
                           </div>
                         )}
                       </TableCell>
+                      {/* Call customer button */}
+                      <TableCell className="px-2">
+                        {task.user?.phoneNumber && (
+                          <a
+                            href={`tel:${task.user.phoneNumber}`}
+                            title={`Call ${task.user.fullName ?? "customer"}`}
+                            className="inline-flex items-center justify-center h-8 w-8 rounded-full hover:bg-primary/10 text-primary transition-colors"
+                          >
+                            <Phone className="h-4 w-4" />
+                          </a>
+                        )}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -476,27 +502,65 @@ export function DeliveryDashboard() {
         </Card>
 
         {/* 2. Route Navigation Card */}
-        <Card className={cn("flex flex-col h-[450px] shadow-lg border-primary/20", mapFullscreen && "fixed inset-4 z-50 bg-background shadow-2xl h-auto")}>
-          <CardHeader className="pb-3 border-b border-border/50 flex flex-row items-center justify-between space-y-0">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Truck className="h-5 w-5 text-primary" /> Route Navigation
-              </CardTitle>
-              <CardDescription>Live route to destinations</CardDescription>
-            </div>
-            <div className="flex items-center gap-1">
-              <Button size="icon" variant="ghost" onClick={() => void fetchData()} className="h-8 w-8">
-                <RefreshCw className="h-4 w-4" />
-              </Button>
-              <Button size="icon" variant="ghost" onClick={() => setMapFullscreen(!mapFullscreen)} className="h-8 w-8">
-                {mapFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="flex-1 p-0 overflow-hidden relative min-h-[300px]">
-            <RouteMap title="Live Routing Map" points={routePoints} />
-          </CardContent>
-        </Card>
+        {mapOpen ? (
+          <Card className={cn(
+            "flex flex-col shadow-lg border-primary/20",
+            mapFullscreen ? "fixed inset-4 z-50 bg-background shadow-2xl h-auto" : "h-[450px]",
+          )}>
+            <CardHeader className="pb-3 border-b border-border/50 flex flex-row items-center justify-between space-y-0">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Truck className="h-5 w-5 text-primary" /> Route Navigation
+                </CardTitle>
+                {!mapMinimized && <CardDescription>Live route to destinations</CardDescription>}
+              </div>
+              <div className="flex items-center gap-1">
+                <Button size="icon" variant="ghost" onClick={() => void fetchData()} className="h-8 w-8" title="Refresh">
+                  <RefreshCw className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={handleToggleMap}
+                  className="h-8 w-8"
+                  title={mapMinimized ? "Restore map" : "Minimize map"}
+                >
+                  {mapMinimized ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => setMapFullscreen(!mapFullscreen)}
+                  className="h-8 w-8"
+                  title={mapFullscreen ? "Exit fullscreen" : "Fullscreen"}
+                >
+                  {mapFullscreen ? <X className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => setMapOpen(false)}
+                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                  title="Close map"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            {!mapMinimized && (
+              <CardContent className="flex-1 p-0 overflow-hidden relative min-h-[300px]">
+                <RouteMap title="Live Routing Map" points={routePoints} />
+              </CardContent>
+            )}
+          </Card>
+        ) : (
+          <button
+            onClick={() => { setMapOpen(true); setMapMinimized(false); }}
+            className="flex items-center justify-center gap-2 h-14 rounded-2xl border-2 border-dashed border-primary/20 text-primary/60 hover:text-primary hover:border-primary/40 transition-colors font-medium text-sm"
+          >
+            <MapPin className="h-4 w-4" /> Show Route Navigation
+          </button>
+        )}
 
         {/* 3. QR Scanner Card */}
         <Card className="flex flex-col min-h-[350px] shadow-lg border-primary/20 bg-background/50">
@@ -522,7 +586,7 @@ export function DeliveryDashboard() {
                   <ScanLine className="h-10 w-10 text-primary" />
                 </div>
                 <h3 className="text-lg font-semibold mb-2">Scanner Inactive</h3>
-                <p className="text-sm text-muted-foreground mb-6">Select a task and click 'Scan QR' to activate the camera scanner.</p>
+                <p className="text-sm text-muted-foreground mb-6">Select a task and click &apos;Scan QR&apos; to activate the camera scanner.</p>
                 <Button 
                   size="lg" 
                   className="w-full font-bold h-14 text-lg" 
@@ -563,7 +627,7 @@ export function DeliveryDashboard() {
                   <Camera className="h-10 w-10 text-primary" />
                 </div>
                 <h3 className="text-lg font-semibold mb-2">Camera Inactive</h3>
-                <p className="text-sm text-muted-foreground mb-6">Select a task and click 'Upload Proof' to take a photo of the collected waste.</p>
+                <p className="text-sm text-muted-foreground mb-6">Select a task and click &apos;Upload Proof&apos; to take a photo of the collected waste.</p>
                 <Button 
                   size="lg" 
                   className="w-full font-bold h-14 text-lg bg-blue-600 hover:bg-blue-700" 

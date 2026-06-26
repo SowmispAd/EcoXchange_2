@@ -162,8 +162,10 @@ export interface Pickup {
   _id: string;
   scheduledDate?: string;
   createdAt?: string;
+  updatedAt?: string;
   status: string;
   weight?: number;
+  actualWeight?: number;
   wasteType?: string;
   type?: string;
   ecoPointsAwarded?: number;

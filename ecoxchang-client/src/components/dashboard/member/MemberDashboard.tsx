@@ -46,9 +46,9 @@ export function MemberDashboard() {
     },
   });
 
-  const recentPickups = pickupsData || [];
-  const marketplaceItems = marketplaceData || [];
-  const ecoPoints = walletData?.ecoPointsBalance || 0;
+  const recentPickups = useMemo(() => pickupsData ?? [], [pickupsData]);
+  const marketplaceItems = useMemo(() => marketplaceData ?? [], [marketplaceData]);
+  const ecoPoints = walletData?.ecoPointsBalance ?? 0;
   
   // Calculate total recycled from pickups
   const totalRecycled = recentPickups

@@ -64,7 +64,7 @@ export function DataTable<T extends Record<string, unknown>>({
                 <TableRow key={i}>
                   {columns.map((c) => (
                     <TableCell key={String(c.key)} className={c.className}>
-                      {String(row[c.key as keyof T] ?? "—")}
+                      {row[c.key as keyof T] as React.ReactNode ?? "—"}
                     </TableCell>
                   ))}
                 </TableRow>

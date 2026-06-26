@@ -14,11 +14,17 @@ const requiredEnv = [
 ];
 
 let missing = false;
+const missingKeys: string[] = [];
+
 for (const key of requiredEnv) {
   if (!process.env[key]) {
-    console.error(`Firebase config error: Missing environment variable ${key}`);
+    missingKeys.push(key);
     missing = true;
   }
+}
+
+if (missing) {
+  console.warn(`Firebase config warning: Missing environment variables: ${missingKeys.join(", ")}. Firebase features will be disabled.`);
 }
 
 let firebaseApp: FirebaseApp | null = null;

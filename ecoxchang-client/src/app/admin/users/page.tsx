@@ -38,7 +38,10 @@ export default function AdminUsersPage() {
   };
 
   useEffect(() => {
-    loadUsers();
+    const init = async () => {
+      await loadUsers();
+    };
+    init();
   }, []);
 
   const handleRoleChange = async (userId: string, newRole: string) => {
@@ -73,7 +76,7 @@ export default function AdminUsersPage() {
     name: user.fullName || user.name || "N/A",
     email: user.email,
     role: (
-      <Select defaultValue={user.role} onValueChange={(val: string) => handleRoleChange(user._id, val)}>
+      <Select defaultValue={user.role} onValueChange={(val) => { if (val) void handleRoleChange(user._id, val); }}>
         <SelectTrigger className="w-[150px] h-8 bg-background border-primary/20">
           <SelectValue />
         </SelectTrigger>

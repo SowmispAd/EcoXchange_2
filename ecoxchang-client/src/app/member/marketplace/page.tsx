@@ -6,13 +6,19 @@ import { ProductForm } from "@/components/eco/ProductForm";
 import { ApprovalTable } from "@/components/eco/ApprovalTable";
 import Image from "next/image";
 import type { MarketplaceProduct } from "@/types/api";
-const mockPendingApprovals: any[] = [];
+import type { ApprovalRow } from "@/components/eco/ApprovalTable";
 import toast from "react-hot-toast";
-
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 
 export default function MemberMarketplacePage() {
+  const { data: approvalsData, isLoading: approvalsLoading } = useQuery({
+    queryKey: ["my-approvals"],
+    queryFn: async () => {
+      const res = await api.get("/marketplace/approvals/my");
+      return res.data.data as ApprovalRow[];
+    },
+  });
   const { data: productsDataRaw } = useQuery({
     queryKey: ['marketplace-products'],
     queryFn: async () => {
@@ -54,7 +60,11 @@ export default function MemberMarketplacePage() {
         <ProductForm />
       </TabsContent>
       <TabsContent value="pending">
-        <ApprovalTable rows={mockPendingApprovals} />
+        {approvalsLoading ? (
+          <div className="py-10 text-center animate-pulse text-muted-foreground">Loading pending approvals...</div>
+        ) : (
+          <ApprovalTable rows={approvalsData || []} />
+        )}
       </TabsContent>
     </Tabs>
   );

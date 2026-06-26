@@ -1,7 +1,8 @@
 import axios from "axios";
 import { useAuthStore } from "@/store/useAuthStore";
 
-const baseURL = process.env.NEXT_PUBLIC_API_URL;
+const envUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const baseURL = envUrl.endsWith("/api") ? envUrl : `${envUrl}/api`;
 
 export const api = axios.create({
   baseURL,
@@ -10,6 +11,10 @@ export const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
+  if (config.url && config.url.startsWith("/api/")) {
+    config.url = config.url.replace("/api/", "/");
+  }
+
   const token = useAuthStore.getState().token;
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
